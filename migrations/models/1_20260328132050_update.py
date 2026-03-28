@@ -5,21 +5,40 @@ RUN_IN_TRANSACTION = True
 
 async def upgrade(db: BaseDBAsyncClient) -> str:
     return """
-        DROP INDEX IF EXISTS "uid_user_collec_user_id_bc1d3c";
         ALTER TABLE "cards" ADD "finishes" JSON NOT NULL DEFAULT '[]';
-        ALTER TABLE "user_collection" ADD "finish" VARCHAR(20) NOT NULL DEFAULT 'nonfoil';
-        UPDATE "user_collection" SET "finish" = 'foil' WHERE "foil" = 1;
-        ALTER TABLE "user_collection" DROP COLUMN "foil";
-        CREATE UNIQUE INDEX "uid_user_collec_user_id_0a47ec" ON "user_collection" ("user_id", "card_id", "finish");"""
+        CREATE TABLE "user_collection_new" (
+            "id" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            "quantity" INT NOT NULL DEFAULT 1,
+            "finish" VARCHAR(20) NOT NULL DEFAULT 'nonfoil',
+            "added_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "card_id" VARCHAR(36) NOT NULL REFERENCES "cards" ("scryfall_id") ON DELETE CASCADE,
+            "user_id" INT NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
+            CONSTRAINT "uid_user_collec_user_id_0a47ec" UNIQUE ("user_id", "card_id", "finish")
+        );
+        INSERT INTO "user_collection_new" ("id", "quantity", "finish", "added_at", "card_id", "user_id")
+            SELECT "id", "quantity", CASE WHEN "foil" = 1 THEN 'foil' ELSE 'nonfoil' END, "added_at", "card_id", "user_id"
+            FROM "user_collection";
+        DROP TABLE "user_collection";
+        ALTER TABLE "user_collection_new" RENAME TO "user_collection";"""
 
 
 async def downgrade(db: BaseDBAsyncClient) -> str:
     return """
-        DROP INDEX IF EXISTS "uid_user_collec_user_id_0a47ec";
         ALTER TABLE "cards" DROP COLUMN "finishes";
-        ALTER TABLE "user_collection" ADD "foil" INT NOT NULL DEFAULT 0;
-        ALTER TABLE "user_collection" DROP COLUMN "finish";
-        CREATE UNIQUE INDEX "uid_user_collec_user_id_bc1d3c" ON "user_collection" ("user_id", "card_id", "foil");"""
+        CREATE TABLE "user_collection_old" (
+            "id" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            "quantity" INT NOT NULL DEFAULT 1,
+            "foil" INT NOT NULL DEFAULT 0,
+            "added_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "card_id" VARCHAR(36) NOT NULL REFERENCES "cards" ("scryfall_id") ON DELETE CASCADE,
+            "user_id" INT NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
+            CONSTRAINT "uid_user_collec_user_id_bc1d3c" UNIQUE ("user_id", "card_id", "foil")
+        );
+        INSERT INTO "user_collection_old" ("id", "quantity", "foil", "added_at", "card_id", "user_id")
+            SELECT "id", "quantity", CASE WHEN "finish" = 'foil' THEN 1 ELSE 0 END, "added_at", "card_id", "user_id"
+            FROM "user_collection";
+        DROP TABLE "user_collection";
+        ALTER TABLE "user_collection_old" RENAME TO "user_collection";"""
 
 
 MODELS_STATE = (

@@ -26,6 +26,6 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.aerich]
-tortoise_orm = "app.database.TORTOISE_ORM"
+tortoise_orm = "app.database.AERICH_TORTOISE_ORM"
 location = "./migrations"
-src_folder = "./."
+src_folder = "./app"

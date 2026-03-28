@@ -38,7 +38,6 @@ async def get_my_collection(
     offset = (page - 1) * limit
 
     entries = await query.offset(offset).limit(limit).prefetch_related("card")
-
     result = []
     for entry in entries:
         card = entry.card

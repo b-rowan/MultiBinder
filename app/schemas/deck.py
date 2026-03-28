@@ -85,5 +85,5 @@ class CardAvailability(BaseModel):
     card_id: str
     card_name: str
     needed: int
-    owners: List[dict] = []  # [{user_id, username, quantity, foil}]
+    owners: List[dict] = []  # [{user_id, username, quantity, foil: bool (any non-nonfoil finish)}]
     status: str  # "owned", "partial", "missing"

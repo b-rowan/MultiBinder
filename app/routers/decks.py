@@ -478,7 +478,7 @@ async def get_deck_availability(
                     "user_id": participant.id,
                     "username": participant.username,
                     "quantity": total_qty,
-                    "foil": any(e.foil for e in entries),
+                    "foil": any(e.finish != "nonfoil" for e in entries),
                 })
 
         total_available = sum(o["quantity"] for o in owners_data)

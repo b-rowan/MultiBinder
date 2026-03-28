@@ -47,7 +47,7 @@ class CollectionEntryOut(BaseModel):
     id: int
     card: CardOut
     quantity: int
-    foil: bool
+    finish: str
     added_at: datetime
 
     class Config:

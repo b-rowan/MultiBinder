@@ -1,2 +1,5 @@
 *.sqlite3*
 .claude
+.env
+data/
+docker-compose.override.yml

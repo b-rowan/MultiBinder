@@ -1,0 +1,30 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      DATABASE_URL: sqlite:////data/multibinder.sqlite3
+    volumes:
+      - ./data:/data
+    networks:
+      - internal
+
+  # Only started when using: docker compose --profile pangolin up
+  newt:
+    image: fosrl/newt
+    restart: unless-stopped
+    profiles:
+      - pangolin
+    depends_on:
+      - app
+    environment:
+      PANGOLIN_ENDPOINT: ${PANGOLIN_ENDPOINT}
+      NEWT_ID: ${NEWT_ID}
+      NEWT_SECRET: ${NEWT_SECRET}
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge

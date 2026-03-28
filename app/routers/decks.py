@@ -13,7 +13,7 @@ from tortoise.expressions import Q
 import re
 
 router = APIRouter()
-from app import templates
+from app.templates import templates
 
 
 def _serialize_deck(deck: Deck, card_count: int = 0, owner_username: str = None) -> dict:

@@ -9,7 +9,7 @@ from app.services.auth import (
     authenticate_user,
     get_current_user,
 )
-from app import templates
+from app.templates import templates
 from app.config import settings
 from fastapi import Depends
 

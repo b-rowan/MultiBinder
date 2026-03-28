@@ -9,7 +9,7 @@ from tortoise.expressions import Q
 import math
 
 router = APIRouter()
-from app import templates
+from app.templates import templates
 
 
 @router.get("/cards", response_class=HTMLResponse)

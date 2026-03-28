@@ -9,7 +9,7 @@ import math
 import csv
 import io
 
-from app import templates
+from app.templates import templates
 
 router = APIRouter()
 

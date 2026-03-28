@@ -7,7 +7,7 @@ from app.models.deck import Deck
 from app.services.auth import get_current_admin_user, get_current_user
 from app.services.scryfall import sync_cards, sync_status
 
-from app import templates
+from app.templates import templates
 
 router = APIRouter()
 

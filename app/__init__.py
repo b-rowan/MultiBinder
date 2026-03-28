@@ -6,9 +6,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.database import init_db, close_db
-from app.routers import auth, cards, collections, decks, admin
 
 BASE_DIR = Path(__file__).parent
+
+# Define templates before importing routers so they can import it from here
+templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+from app.routers import auth, cards, collections, decks, admin
 
 
 @asynccontextmanager
@@ -26,10 +30,7 @@ app = FastAPI(
 )
 
 # Mount static files
-app.mount("/static", StaticFiles(directory=BASE_DIR.joinpath("static")), name="static")
-
-# Templates
-templates = Jinja2Templates(directory=BASE_DIR.joinpath("templates"))
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 # Include routers
 app.include_router(auth.router, tags=["auth"])

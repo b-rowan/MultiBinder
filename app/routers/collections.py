@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, Query, UploadFile, File
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from app.models.card import Card, UserCollection
 from app.models.user import User
 from app.schemas.card import CollectionEntryCreate, CollectionEntryUpdate, CollectionEntryOut, CardOut
@@ -10,8 +9,9 @@ import math
 import csv
 import io
 
+from app import templates
+
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/collection", response_class=HTMLResponse)

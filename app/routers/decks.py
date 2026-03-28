@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from app.models.deck import Deck, DeckCard
 from app.models.card import Card, UserCollection
 from app.models.user import User
@@ -14,7 +13,7 @@ from tortoise.expressions import Q
 import re
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+from app import templates
 
 
 def _serialize_deck(deck: Deck, card_count: int = 0, owner_username: str = None) -> dict:

@@ -1,15 +1,15 @@
 import asyncio
 from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from app.models.user import User
 from app.models.card import Card, UserCollection
 from app.models.deck import Deck
 from app.services.auth import get_current_admin_user, get_current_user
 from app.services.scryfall import sync_cards, sync_status
 
+from app import templates
+
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/admin", response_class=HTMLResponse)

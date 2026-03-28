@@ -1,7 +1,6 @@
 from datetime import timedelta
 from fastapi import APIRouter, HTTPException, status, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from app.schemas.user import UserCreate, UserLogin, UserOut, Token
 from app.models.user import User
 from app.services.auth import (
@@ -10,11 +9,11 @@ from app.services.auth import (
     authenticate_user,
     get_current_user,
 )
+from app import templates
 from app.config import settings
 from fastapi import Depends
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/login", response_class=HTMLResponse)

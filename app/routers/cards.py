@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from app.models.card import Card
 from app.schemas.card import CardOut, CardSearchResult
 from app.services.auth import get_current_user
@@ -10,7 +9,7 @@ from tortoise.expressions import Q
 import math
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+from app import templates
 
 
 @router.get("/cards", response_class=HTMLResponse)

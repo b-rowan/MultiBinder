@@ -22,7 +22,7 @@ sync_status = {
 
 async def get_bulk_data_url() -> str:
     """Fetch the Scryfall bulk data endpoint and return the default_cards download URL."""
-    async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}) as client:
+    async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}, timeout=httpx.Timeout(30.0)) as client:
         response = await client.get(f"{SCRYFALL_API}/bulk-data")
         response.raise_for_status()
         data = response.json()

@@ -9,7 +9,7 @@ from app.database import init_db, close_db
 BASE_DIR = Path(__file__).parent
 
 from app.routers import auth, cards, collections, decks, admin
-from templates import templates
+from app.templates import templates
 
 
 @asynccontextmanager

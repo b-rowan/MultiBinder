@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MultiBinder{% endblock %} — MTG Collection Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        purple: {
+                            950: '#1a0533',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #7c3aed; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6d28d9; }
+
+        /* Card hover glow effect */
+        .card-hover {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+        }
+
+        /* Mana symbol colors */
+        .mana-W { color: #f9fafb; background: #d1d5db; }
+        .mana-U { color: #bfdbfe; background: #1e40af; }
+        .mana-B { color: #d1d5db; background: #1f2937; }
+        .mana-R { color: #fecaca; background: #991b1b; }
+        .mana-G { color: #bbf7d0; background: #166534; }
+
+        /* Rarity colors */
+        .rarity-common { color: #9ca3af; }
+        .rarity-uncommon { color: #94a3b8; }
+        .rarity-rare { color: #fbbf24; }
+        .rarity-mythic { color: #f97316; }
+
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid #4b5563;
+            border-top-color: #7c3aed;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Flash messages */
+        .flash-enter { animation: slideDown 0.3s ease; }
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+
+    <!-- Navigation -->
+    <nav class="bg-gray-800 border-b border-purple-900 shadow-lg" id="navbar" style="display:none;">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center gap-8">
+                    <a href="/dashboard" class="flex items-center gap-2 text-xl font-bold text-purple-400 hover:text-purple-300 transition-colors">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
+                        MultiBinder
+                    </a>
+
+                    <!-- Main nav links -->
+                    <div class="hidden md:flex items-center gap-1">
+                        <a href="/collection" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                            </svg>
+                            Collection
+                        </a>
+                        <a href="/decks" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                            </svg>
+                            Decks
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Right side -->
+                <div class="flex items-center gap-3">
+                    <!-- Admin link (shown via JS if admin) -->
+                    <a href="/admin" id="admin-link" class="hidden px-3 py-2 rounded-md text-sm font-medium text-amber-400 hover:text-amber-300 hover:bg-gray-700 transition-colors flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        Admin
+                    </a>
+
+                    <!-- User menu -->
+                    <div class="relative" id="user-menu-container">
+                        <button id="user-menu-btn" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">
+                            <div class="w-7 h-7 rounded-full bg-purple-700 flex items-center justify-center text-xs font-bold" id="user-avatar">?</div>
+                            <span id="nav-username">Loading...</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div id="user-dropdown" class="hidden absolute right-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
+                            <div class="px-4 py-2 border-b border-gray-700">
+                                <p class="text-xs text-gray-400">Signed in as</p>
+                                <p class="text-sm font-medium text-white" id="dropdown-username">...</p>
+                            </div>
+                            <a href="/dashboard" class="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">Dashboard</a>
+                            <button onclick="logout()" class="w-full text-left px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-gray-700 transition-colors">
+                                Sign Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile nav -->
+        <div class="md:hidden border-t border-gray-700 px-4 py-2 flex gap-2">
+            <a href="/collection" class="flex-1 text-center px-3 py-2 rounded text-sm text-gray-300 hover:text-white hover:bg-gray-700">Collection</a>
+            <a href="/decks" class="flex-1 text-center px-3 py-2 rounded text-sm text-gray-300 hover:text-white hover:bg-gray-700">Decks</a>
+        </div>
+    </nav>
+
+    <!-- Flash messages -->
+    <div id="flash-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm"></div>
+
+    <!-- Main content -->
+    <main class="flex-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 border-t border-gray-700 mt-auto py-4 px-6 text-center text-sm text-gray-500">
+        MultiBinder &mdash; MTG Collection & Deck Tracker &mdash; Card data provided by
+        <a href="https://scryfall.com" target="_blank" class="text-purple-400 hover:text-purple-300">Scryfall</a>
+    </footer>
+
+    <!-- Base JS -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script>
+        // User menu dropdown toggle
+        const menuBtn = document.getElementById('user-menu-btn');
+        const menuDropdown = document.getElementById('user-dropdown');
+        menuBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menuDropdown.classList.toggle('hidden');
+        });
+        document.addEventListener('click', () => menuDropdown?.classList.add('hidden'));
+
+        // Flash message helper
+        function showFlash(message, type = 'info') {
+            const container = document.getElementById('flash-container');
+            const colors = {
+                success: 'bg-green-800 border-green-600 text-green-100',
+                error: 'bg-red-900 border-red-700 text-red-100',
+                warning: 'bg-amber-900 border-amber-700 text-amber-100',
+                info: 'bg-blue-900 border-blue-700 text-blue-100',
+            };
+            const el = document.createElement('div');
+            el.className = `flash-enter px-4 py-3 rounded-lg border ${colors[type] || colors.info} shadow-lg flex items-start gap-2`;
+            el.innerHTML = `
+                <span class="flex-1 text-sm">${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-2 text-current opacity-60 hover:opacity-100 text-lg leading-none">&times;</button>
+            `;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 5000);
+        }
+
+        // Initialize auth on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            const publicPages = ['/login', '/register'];
+            const isPublicPage = publicPages.some(p => window.location.pathname === p);
+
+            const token = localStorage.getItem('token');
+            if (!token && !isPublicPage) {
+                window.location.href = '/login';
+                return;
+            }
+
+            if (token) {
+                try {
+                    const user = await API.get('/auth/me');
+                    if (!user || user.detail) {
+                        if (!isPublicPage) {
+                            localStorage.removeItem('token');
+                            window.location.href = '/login';
+                        }
+                        return;
+                    }
+
+                    // Update navbar
+                    document.getElementById('navbar').style.display = '';
+                    document.getElementById('nav-username').textContent = user.username;
+                    document.getElementById('dropdown-username').textContent = user.username;
+                    document.getElementById('user-avatar').textContent = user.username[0].toUpperCase();
+
+                    if (user.is_admin) {
+                        document.getElementById('admin-link').classList.remove('hidden');
+                    }
+
+                    // Store user globally
+                    window.currentUser = user;
+                } catch (e) {
+                    if (!isPublicPage) {
+                        window.location.href = '/login';
+                    }
+                }
+            }
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

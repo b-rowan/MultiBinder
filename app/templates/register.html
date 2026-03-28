@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Create Account{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4">
+    <div class="w-full max-w-md">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-900 border-2 border-purple-600 mb-4">
+                <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-white">MultiBinder</h1>
+            <p class="text-gray-400 mt-1">Create your account</p>
+        </div>
+
+        <!-- Register Card -->
+        <div class="bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl p-8">
+            <h2 class="text-xl font-semibold text-white mb-6">Join MultiBinder</h2>
+
+            <form id="register-form" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1.5">Username</label>
+                    <input
+                        type="text"
+                        id="username"
+                        required
+                        autocomplete="username"
+                        class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                        placeholder="Choose a username"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1.5">Email Address</label>
+                    <input
+                        type="email"
+                        id="email"
+                        required
+                        autocomplete="email"
+                        class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                        placeholder="your@email.com"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1.5">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        required
+                        autocomplete="new-password"
+                        class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                        placeholder="Choose a strong password"
+                    >
+                    <div id="password-strength" class="mt-2 hidden">
+                        <div class="flex gap-1 mb-1">
+                            <div class="h-1 flex-1 rounded strength-bar bg-gray-600"></div>
+                            <div class="h-1 flex-1 rounded strength-bar bg-gray-600"></div>
+                            <div class="h-1 flex-1 rounded strength-bar bg-gray-600"></div>
+                            <div class="h-1 flex-1 rounded strength-bar bg-gray-600"></div>
+                        </div>
+                        <p class="text-xs text-gray-400" id="strength-text">Enter a password</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1.5">Confirm Password</label>
+                    <input
+                        type="password"
+                        id="confirm-password"
+                        required
+                        autocomplete="new-password"
+                        class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                        placeholder="Confirm your password"
+                    >
+                    <p id="match-error" class="hidden text-xs text-red-400 mt-1">Passwords do not match</p>
+                </div>
+
+                <!-- Error message -->
+                <div id="error-msg" class="hidden bg-red-900/50 border border-red-700 rounded-lg px-4 py-3 text-sm text-red-300"></div>
+
+                <button
+                    type="submit"
+                    id="submit-btn"
+                    class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-800 flex items-center justify-center gap-2"
+                >
+                    <span id="btn-text">Create Account</span>
+                    <div id="btn-spinner" class="hidden spinner w-5 h-5"></div>
+                </button>
+            </form>
+
+            <p class="mt-6 text-center text-sm text-gray-400">
+                Already have an account?
+                <a href="/login" class="text-purple-400 hover:text-purple-300 font-medium transition-colors">Sign in</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Redirect if already logged in
+    if (localStorage.getItem('token')) {
+        window.location.href = '/dashboard';
+    }
+
+    // Password strength checker
+    document.getElementById('password').addEventListener('input', (e) => {
+        const val = e.target.value;
+        const strengthDiv = document.getElementById('password-strength');
+        const bars = strengthDiv.querySelectorAll('.strength-bar');
+        const strengthText = document.getElementById('strength-text');
+
+        if (!val) {
+            strengthDiv.classList.add('hidden');
+            return;
+        }
+        strengthDiv.classList.remove('hidden');
+
+        let score = 0;
+        if (val.length >= 8) score++;
+        if (/[A-Z]/.test(val)) score++;
+        if (/[0-9]/.test(val)) score++;
+        if (/[^A-Za-z0-9]/.test(val)) score++;
+
+        const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500'];
+        const labels = ['Weak', 'Fair', 'Good', 'Strong'];
+
+        bars.forEach((bar, i) => {
+            bar.className = `h-1 flex-1 rounded strength-bar ${i < score ? colors[score - 1] : 'bg-gray-600'}`;
+        });
+        strengthText.textContent = score > 0 ? labels[score - 1] : 'Too short';
+    });
+
+    // Password match check
+    document.getElementById('confirm-password').addEventListener('input', () => {
+        const pass = document.getElementById('password').value;
+        const confirm = document.getElementById('confirm-password').value;
+        const error = document.getElementById('match-error');
+        if (confirm && pass !== confirm) {
+            error.classList.remove('hidden');
+        } else {
+            error.classList.add('hidden');
+        }
+    });
+
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const confirm = document.getElementById('confirm-password').value;
+        const errorMsg = document.getElementById('error-msg');
+
+        errorMsg.classList.add('hidden');
+
+        if (password !== confirm) {
+            errorMsg.textContent = 'Passwords do not match.';
+            errorMsg.classList.remove('hidden');
+            return;
+        }
+
+        if (password.length < 6) {
+            errorMsg.textContent = 'Password must be at least 6 characters.';
+            errorMsg.classList.remove('hidden');
+            return;
+        }
+
+        const btn = document.getElementById('submit-btn');
+        const btnText = document.getElementById('btn-text');
+        const spinner = document.getElementById('btn-spinner');
+
+        btn.disabled = true;
+        btnText.textContent = 'Creating account...';
+        spinner.classList.remove('hidden');
+
+        try {
+            const res = await fetch('/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, password }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                errorMsg.textContent = data.detail || 'Registration failed. Please try again.';
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            localStorage.setItem('token', data.access_token);
+            window.location.href = '/dashboard';
+        } catch (err) {
+            errorMsg.textContent = 'Network error. Please try again.';
+            errorMsg.classList.remove('hidden');
+        } finally {
+            btn.disabled = false;
+            btnText.textContent = 'Create Account';
+            spinner.classList.add('hidden');
+        }
+    });
+</script>
+{% endblock %}

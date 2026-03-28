@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Collection{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-white">My Collection</h1>
+            <p class="text-gray-400 mt-1">Browse Scryfall cards and manage your collection</p>
+        </div>
+        <div class="flex items-center gap-3 text-sm text-gray-400">
+            <span id="collection-count" class="bg-gray-800 border border-gray-700 px-3 py-1.5 rounded-full">Loading...</span>
+            <button onclick="openImportModal()"
+                class="flex items-center gap-2 bg-gray-800 border border-gray-700 hover:border-purple-500 hover:text-white px-3 py-1.5 rounded-full transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                Import CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Layout: Search + Results side by side -->
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+
+        <!-- Left: Card Search Panel -->
+        <div class="xl:col-span-2">
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-5 sticky top-4">
+                <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    Browse Cards
+                </h2>
+
+                <!-- Search input -->
+                <div class="relative mb-3">
+                    <input type="text" id="card-search-input"
+                        placeholder="Search card name..."
+                        class="w-full bg-gray-900 border border-gray-600 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+
+                <!-- Filters -->
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <select id="filter-color"
+                        class="bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="">Any Color</option>
+                        <option value="W">White</option>
+                        <option value="U">Blue</option>
+                        <option value="B">Black</option>
+                        <option value="R">Red</option>
+                        <option value="G">Green</option>
+                    </select>
+                    <select id="filter-rarity"
+                        class="bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="">Any Rarity</option>
+                        <option value="common">Common</option>
+                        <option value="uncommon">Uncommon</option>
+                        <option value="rare">Rare</option>
+                        <option value="mythic">Mythic</option>
+                    </select>
+                    <select id="filter-type"
+                        class="col-span-2 bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="">Any Type</option>
+                        <option value="Creature">Creature</option>
+                        <option value="Instant">Instant</option>
+                        <option value="Sorcery">Sorcery</option>
+                        <option value="Enchantment">Enchantment</option>
+                        <option value="Artifact">Artifact</option>
+                        <option value="Land">Land</option>
+                        <option value="Planeswalker">Planeswalker</option>
+                    </select>
+                </div>
+
+                <button onclick="searchCards(1)"
+                    class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg transition-colors font-medium mb-4">
+                    Search
+                </button>
+
+                <!-- Search Results -->
+                <div id="search-results-container" class="space-y-2 max-h-[calc(100vh-380px)] overflow-y-auto pr-1">
+                    <p class="text-center text-gray-500 text-sm py-4">Search for cards above to add to your collection</p>
+                </div>
+
+                <!-- Search Pagination -->
+                <div id="search-pagination" class="hidden mt-3 flex items-center justify-between text-sm text-gray-400">
+                    <button id="search-prev" onclick="searchCards(currentSearchPage - 1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50">Prev</button>
+                    <span id="search-page-info">Page 1</span>
+                    <button id="search-next" onclick="searchCards(currentSearchPage + 1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50">Next</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: My Collection -->
+        <div class="xl:col-span-3">
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                        My Cards
+                    </h2>
+                    <!-- Collection search -->
+                    <div class="relative">
+                        <input type="text" id="collection-search"
+                            placeholder="Filter collection..."
+                            class="bg-gray-900 border border-gray-600 rounded-lg pl-8 pr-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 w-40">
+                        <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div id="collection-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                    <div class="col-span-full flex justify-center py-8">
+                        <div class="spinner w-8 h-8"></div>
+                    </div>
+                </div>
+
+                <!-- Collection Pagination -->
+                <div id="collection-pagination" class="hidden mt-4 flex items-center justify-between text-sm text-gray-400">
+                    <button id="coll-prev" onclick="loadCollection(currentCollPage - 1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">Prev</button>
+                    <span id="coll-page-info">Page 1</span>
+                    <button id="coll-next" onclick="loadCollection(currentCollPage + 1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSV Import Modal -->
+<div id="import-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="flex items-center justify-between p-5 border-b border-gray-700">
+            <h3 class="text-lg font-semibold text-white">Import Collection from CSV</h3>
+            <button onclick="closeImportModal()" class="text-gray-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="p-5 space-y-4">
+            <p class="text-sm text-gray-400">Upload a ManaBox-compatible CSV file. The file must include <code class="text-purple-300">Scryfall ID</code>, <code class="text-purple-300">Quantity</code>, and <code class="text-purple-300">Foil</code> columns.</p>
+            <div id="import-drop-area"
+                class="border-2 border-dashed border-gray-600 hover:border-purple-500 rounded-xl p-8 text-center cursor-pointer transition-colors"
+                onclick="document.getElementById('import-file-input').click()"
+                ondragover="event.preventDefault(); this.classList.add('border-purple-500')"
+                ondragleave="this.classList.remove('border-purple-500')"
+                ondrop="handleImportDrop(event)">
+                <svg class="w-10 h-10 mx-auto mb-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                <p class="text-sm text-gray-400" id="import-file-label">Click or drag a CSV file here</p>
+            </div>
+            <input type="file" id="import-file-input" accept=".csv,.tsv,.txt" class="hidden" onchange="handleImportFileSelect(event)">
+
+            <!-- Results -->
+            <div id="import-results" class="hidden space-y-2">
+                <div class="bg-gray-900 border border-gray-700 rounded-lg p-4 text-sm space-y-1">
+                    <p class="text-gray-300">Cards added: <span id="import-added" class="text-green-400 font-semibold">0</span></p>
+                    <p class="text-gray-300">Entries updated: <span id="import-updated" class="text-blue-400 font-semibold">0</span></p>
+                    <p class="text-gray-300">Skipped: <span id="import-skipped" class="text-gray-400 font-semibold">0</span></p>
+                </div>
+                <div id="import-errors-box" class="hidden bg-red-950/50 border border-red-800 rounded-lg p-3 text-xs text-red-300 space-y-1 max-h-32 overflow-y-auto"></div>
+            </div>
+        </div>
+        <div class="p-5 border-t border-gray-700 flex gap-3">
+            <button onclick="closeImportModal()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg transition-colors">Cancel</button>
+            <button id="import-submit-btn" onclick="submitImport()" disabled
+                class="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white py-2.5 rounded-lg transition-colors font-medium">
+                Import
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Card Detail Modal -->
+<div id="card-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between p-5 border-b border-gray-700">
+            <h3 class="text-xl font-semibold text-white" id="modal-card-name">Card Name</h3>
+            <button onclick="closeCardModal()" class="text-gray-400 hover:text-white ml-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="p-5 flex gap-4">
+            <img id="modal-card-image" src="" alt="" class="w-40 rounded-lg flex-shrink-0 shadow-lg">
+            <div class="flex-1 space-y-2">
+                <p class="text-gray-300 text-sm" id="modal-mana-cost"></p>
+                <p class="text-gray-400 text-sm" id="modal-type"></p>
+                <p class="text-gray-300 text-sm leading-relaxed" id="modal-oracle"></p>
+                <p class="text-gray-400 text-xs" id="modal-set"></p>
+                <div class="flex items-center gap-2 mt-3">
+                    <span class="text-sm font-medium text-gray-300" id="modal-rarity"></span>
+                </div>
+            </div>
+        </div>
+        <div class="p-5 border-t border-gray-700">
+            <div class="flex items-center gap-3">
+                <label class="text-sm text-gray-300">Quantity:</label>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustModalQty(-1)" class="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-bold transition-colors">-</button>
+                    <span id="modal-qty" class="w-8 text-center text-white font-semibold">1</span>
+                    <button onclick="adjustModalQty(1)" class="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-bold transition-colors">+</button>
+                </div>
+                <label class="flex items-center gap-2 text-sm text-gray-300 ml-2">
+                    <input type="checkbox" id="modal-foil" class="w-4 h-4 accent-purple-500">
+                    Foil
+                </label>
+            </div>
+            <button onclick="addToCollectionFromModal()"
+                id="modal-add-btn"
+                class="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg transition-colors font-medium">
+                Add to Collection
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/collection.js"></script>
+{% endblock %}

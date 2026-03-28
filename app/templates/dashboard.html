@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <!-- Welcome Header -->
+    <div class="mb-10">
+        <h1 class="text-3xl font-bold text-white">Welcome back, <span id="welcome-username" class="text-purple-400">...</span></h1>
+        <p class="text-gray-400 mt-1">Manage your MTG collection and decks</p>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 flex items-center gap-4 hover:border-purple-700 transition-colors">
+            <div class="w-12 h-12 rounded-xl bg-purple-900/50 flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-gray-400 text-sm">Collection</p>
+                <p class="text-2xl font-bold text-white" id="stat-collection">—</p>
+                <p class="text-xs text-gray-500">unique cards</p>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 flex items-center gap-4 hover:border-violet-700 transition-colors">
+            <div class="w-12 h-12 rounded-xl bg-violet-900/50 flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-gray-400 text-sm">My Decks</p>
+                <p class="text-2xl font-bold text-white" id="stat-decks">—</p>
+                <p class="text-xs text-gray-500">owned decks</p>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 flex items-center gap-4 hover:border-blue-700 transition-colors">
+            <div class="w-12 h-12 rounded-xl bg-blue-900/50 flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-gray-400 text-sm">Shared Decks</p>
+                <p class="text-2xl font-bold text-white" id="stat-shared">—</p>
+                <p class="text-xs text-gray-500">collaborating on</p>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 flex items-center gap-4 hover:border-green-700 transition-colors">
+            <div class="w-12 h-12 rounded-xl bg-green-900/50 flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-gray-400 text-sm">Card Database</p>
+                <p class="text-2xl font-bold text-white" id="stat-cards">—</p>
+                <p class="text-xs text-gray-500">cards synced</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions + Recent Decks -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Quick Actions -->
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4">Quick Actions</h2>
+            <div class="space-y-3">
+                <a href="/collection" class="flex items-center gap-3 p-3 rounded-lg bg-gray-900 hover:bg-gray-700 border border-gray-700 hover:border-purple-600 transition-all group">
+                    <div class="w-9 h-9 rounded-lg bg-purple-900/50 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-white group-hover:text-purple-300">Add Cards</p>
+                        <p class="text-xs text-gray-400">Browse & add to collection</p>
+                    </div>
+                </a>
+
+                <button onclick="showCreateDeckModal()" class="w-full flex items-center gap-3 p-3 rounded-lg bg-gray-900 hover:bg-gray-700 border border-gray-700 hover:border-violet-600 transition-all group">
+                    <div class="w-9 h-9 rounded-lg bg-violet-900/50 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                    </div>
+                    <div class="text-left">
+                        <p class="text-sm font-medium text-white group-hover:text-violet-300">New Deck</p>
+                        <p class="text-xs text-gray-400">Create a new deck</p>
+                    </div>
+                </button>
+
+                <a href="/decks" class="flex items-center gap-3 p-3 rounded-lg bg-gray-900 hover:bg-gray-700 border border-gray-700 hover:border-blue-600 transition-all group">
+                    <div class="w-9 h-9 rounded-lg bg-blue-900/50 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-white group-hover:text-blue-300">View All Decks</p>
+                        <p class="text-xs text-gray-400">Manage your decks</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Recent Decks -->
+        <div class="lg:col-span-2 bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-white">Recent Decks</h2>
+                <a href="/decks" class="text-sm text-purple-400 hover:text-purple-300 transition-colors">View all</a>
+            </div>
+            <div id="recent-decks" class="space-y-3">
+                <div class="flex items-center justify-center py-8 text-gray-500">
+                    <div class="spinner w-8 h-8"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Status Banner (shown if no cards synced) -->
+    <div id="sync-banner" class="hidden mt-6 bg-amber-900/30 border border-amber-700 rounded-xl p-5 flex items-start gap-4">
+        <div class="w-10 h-10 rounded-full bg-amber-900 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+        </div>
+        <div>
+            <h3 class="text-amber-300 font-semibold">Card database is empty</h3>
+            <p class="text-amber-200/70 text-sm mt-1">No cards have been synced from Scryfall yet. Ask an admin to sync the card database before adding cards to your collection.</p>
+            <a href="/admin" id="sync-admin-link" class="hidden mt-3 inline-block text-sm bg-amber-700 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg transition-colors">Go to Admin Panel</a>
+        </div>
+    </div>
+</div>
+
+<!-- Create Deck Modal -->
+<div id="create-deck-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+        <h3 class="text-xl font-semibold text-white mb-5">Create New Deck</h3>
+        <form id="create-deck-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1.5">Deck Name</label>
+                <input type="text" id="new-deck-name" required
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="My Awesome Deck">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1.5">Format</label>
+                <select id="new-deck-format"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    <option value="commander">Commander</option>
+                    <option value="standard">Standard</option>
+                    <option value="modern">Modern</option>
+                    <option value="legacy">Legacy</option>
+                    <option value="vintage">Vintage</option>
+                    <option value="pioneer">Pioneer</option>
+                    <option value="pauper">Pauper</option>
+                    <option value="casual">Casual</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1.5">Description (optional)</label>
+                <textarea id="new-deck-desc" rows="2"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                    placeholder="Deck strategy..."></textarea>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="hideCreateDeckModal()"
+                    class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg transition-colors font-medium">
+                    Create Deck
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function showCreateDeckModal() {
+        document.getElementById('create-deck-modal').classList.remove('hidden');
+    }
+    function hideCreateDeckModal() {
+        document.getElementById('create-deck-modal').classList.add('hidden');
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('create-deck-modal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) hideCreateDeckModal();
+    });
+
+    document.getElementById('create-deck-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('new-deck-name').value.trim();
+        const format = document.getElementById('new-deck-format').value;
+        const description = document.getElementById('new-deck-desc').value.trim();
+
+        const res = await API.post('/api/decks', { name, format, description });
+        if (res && res.id) {
+            hideCreateDeckModal();
+            window.location.href = `/decks/${res.id}`;
+        } else {
+            showFlash('Failed to create deck', 'error');
+        }
+    });
+
+    async function loadDashboard() {
+        // Set welcome username
+        if (window.currentUser) {
+            document.getElementById('welcome-username').textContent = window.currentUser.username;
+        }
+
+        // Load collection stats
+        const collectionRes = await API.get('/api/collection?limit=1');
+        if (collectionRes) {
+            document.getElementById('stat-collection').textContent = collectionRes.total || 0;
+        }
+
+        // Load deck stats
+        const decksRes = await API.get('/api/decks');
+        if (decksRes) {
+            document.getElementById('stat-decks').textContent = decksRes.owned?.length || 0;
+            document.getElementById('stat-shared').textContent = decksRes.shared?.length || 0;
+
+            // Show recent decks
+            const allDecks = [...(decksRes.owned || []), ...(decksRes.shared || [])];
+            allDecks.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+            renderRecentDecks(allDecks.slice(0, 5));
+        }
+
+        // Load sync status for card count
+        const syncRes = await API.get('/api/admin/sync-status');
+        if (syncRes) {
+            // Try to get card count from stats if admin
+            if (window.currentUser?.is_admin) {
+                const statsRes = await API.get('/api/admin/stats');
+                if (statsRes) {
+                    document.getElementById('stat-cards').textContent = statsRes.card_count?.toLocaleString() || 0;
+                    if (statsRes.card_count === 0) {
+                        document.getElementById('sync-banner').classList.remove('hidden');
+                        document.getElementById('sync-admin-link').classList.remove('hidden');
+                    }
+                }
+            } else {
+                document.getElementById('stat-cards').textContent = syncRes.processed?.toLocaleString() || '?';
+            }
+        }
+    }
+
+    function formatFormat(fmt) {
+        return fmt.charAt(0).toUpperCase() + fmt.slice(1);
+    }
+
+    function renderRecentDecks(decks) {
+        const container = document.getElementById('recent-decks');
+        if (!decks.length) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                    <p class="text-sm">No decks yet. Create your first deck!</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = decks.map(deck => `
+            <a href="/decks/${deck.id}" class="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-700 border border-transparent hover:border-gray-600 transition-all group">
+                <div class="w-10 h-10 rounded-lg bg-purple-900/50 flex items-center justify-center flex-shrink-0 group-hover:bg-purple-800/50">
+                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-white truncate group-hover:text-purple-300">${deck.name}</p>
+                    <p class="text-xs text-gray-400">${formatFormat(deck.format)} &bull; ${deck.card_count} cards</p>
+                </div>
+                ${deck.is_shared ? '<span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-800">Shared</span>' : ''}
+                <svg class="w-4 h-4 text-gray-500 group-hover:text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </a>
+        `).join('');
+    }
+
+    // Wait for auth to be ready
+    document.addEventListener('DOMContentLoaded', () => {
+        const checkUser = setInterval(() => {
+            if (window.currentUser !== undefined) {
+                clearInterval(checkUser);
+                if (window.currentUser) {
+                    document.getElementById('welcome-username').textContent = window.currentUser.username;
+                    loadDashboard();
+                }
+            }
+        }, 100);
+    });
+</script>
+{% endblock %}

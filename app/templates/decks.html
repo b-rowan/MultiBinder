@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Decks{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Decks</h1>
+            <p class="text-gray-400 mt-1">Build and manage your MTG decks</p>
+        </div>
+        <button onclick="showCreateDeckModal()"
+            class="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors shadow-lg shadow-purple-900/30">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+            New Deck
+        </button>
+    </div>
+
+    <!-- My Decks Section -->
+    <section class="mb-10">
+        <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+            My Decks
+            <span id="my-deck-count" class="text-sm text-gray-400 font-normal ml-1"></span>
+        </h2>
+
+        <div id="my-decks-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div class="col-span-full flex justify-center py-8">
+                <div class="spinner w-8 h-8"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Shared With Me Section -->
+    <section>
+        <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            Shared With Me
+            <span id="shared-deck-count" class="text-sm text-gray-400 font-normal ml-1"></span>
+        </h2>
+
+        <div id="shared-decks-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <!-- Loaded via JS -->
+        </div>
+    </section>
+
+</div>
+
+<!-- Create Deck Modal -->
+<div id="create-deck-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-xl font-semibold text-white">Create New Deck</h3>
+            <button onclick="hideCreateDeckModal()" class="text-gray-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <form id="create-deck-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1.5">Deck Name *</label>
+                <input type="text" id="new-deck-name" required
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="e.g. Atraxa Superfriends">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1.5">Format</label>
+                <select id="new-deck-format"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    <option value="commander">Commander</option>
+                    <option value="standard">Standard</option>
+                    <option value="modern">Modern</option>
+                    <option value="legacy">Legacy</option>
+                    <option value="vintage">Vintage</option>
+                    <option value="pioneer">Pioneer</option>
+                    <option value="pauper">Pauper</option>
+                    <option value="casual">Casual</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1.5">Description</label>
+                <textarea id="new-deck-desc" rows="2"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                    placeholder="Deck strategy and notes..."></textarea>
+            </div>
+            <div class="flex items-center gap-2">
+                <input type="checkbox" id="new-deck-shared" class="w-4 h-4 accent-purple-500">
+                <label for="new-deck-shared" class="text-sm text-gray-300">Allow collaborators</label>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="hideCreateDeckModal()"
+                    class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg transition-colors font-medium">
+                    Create Deck
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const FORMAT_COLORS = {
+        commander: 'text-purple-300 bg-purple-900/40 border-purple-800',
+        standard: 'text-green-300 bg-green-900/40 border-green-800',
+        modern: 'text-blue-300 bg-blue-900/40 border-blue-800',
+        legacy: 'text-yellow-300 bg-yellow-900/40 border-yellow-800',
+        vintage: 'text-red-300 bg-red-900/40 border-red-800',
+        pioneer: 'text-cyan-300 bg-cyan-900/40 border-cyan-800',
+        pauper: 'text-gray-300 bg-gray-900/40 border-gray-700',
+        casual: 'text-pink-300 bg-pink-900/40 border-pink-800',
+    };
+
+    function showCreateDeckModal() {
+        document.getElementById('create-deck-modal').classList.remove('hidden');
+    }
+    function hideCreateDeckModal() {
+        document.getElementById('create-deck-modal').classList.add('hidden');
+    }
+
+    document.getElementById('create-deck-modal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) hideCreateDeckModal();
+    });
+
+    document.getElementById('create-deck-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('new-deck-name').value.trim();
+        const format = document.getElementById('new-deck-format').value;
+        const description = document.getElementById('new-deck-desc').value.trim();
+        const is_shared = document.getElementById('new-deck-shared').checked;
+
+        const res = await API.post('/api/decks', { name, format, description, is_shared });
+        if (res && res.id) {
+            window.location.href = `/decks/${res.id}`;
+        } else {
+            showFlash(res?.detail || 'Failed to create deck', 'error');
+        }
+    });
+
+    function renderDeckCard(deck, isOwner) {
+        const formatClass = FORMAT_COLORS[deck.format] || FORMAT_COLORS.casual;
+        return `
+            <a href="/decks/${deck.id}" class="bg-gray-800 border border-gray-700 rounded-xl p-5 hover:border-purple-600 transition-all card-hover flex flex-col gap-3 group">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-semibold text-white truncate group-hover:text-purple-300 transition-colors">${deck.name}</h3>
+                        ${deck.description ? `<p class="text-xs text-gray-400 mt-1 line-clamp-2">${deck.description}</p>` : ''}
+                    </div>
+                    ${deck.is_shared ? '<span class="text-xs bg-blue-900/40 text-blue-300 px-2 py-0.5 rounded-full border border-blue-800 ml-2 flex-shrink-0">Shared</span>' : ''}
+                </div>
+                <div class="flex items-center gap-2 flex-wrap mt-auto">
+                    <span class="text-xs px-2 py-0.5 rounded-full border ${formatClass}">${deck.format.charAt(0).toUpperCase() + deck.format.slice(1)}</span>
+                    <span class="text-xs text-gray-400">${deck.card_count} cards</span>
+                    ${!isOwner ? `<span class="text-xs text-gray-400 ml-auto">by ${deck.owner_username}</span>` : ''}
+                </div>
+            </a>
+        `;
+    }
+
+    function renderEmptyState(container, message) {
+        container.innerHTML = `
+            <div class="col-span-full text-center py-12 text-gray-500">
+                <svg class="w-16 h-16 mx-auto mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                </svg>
+                <p>${message}</p>
+            </div>`;
+    }
+
+    async function loadDecks() {
+        const res = await API.get('/api/decks');
+        if (!res) return;
+
+        const myGrid = document.getElementById('my-decks-grid');
+        const sharedGrid = document.getElementById('shared-decks-grid');
+
+        // My decks
+        const owned = res.owned || [];
+        document.getElementById('my-deck-count').textContent = `(${owned.length})`;
+        if (owned.length === 0) {
+            renderEmptyState(myGrid, "You don't have any decks yet. Create your first deck!");
+        } else {
+            myGrid.innerHTML = owned.map(d => renderDeckCard(d, true)).join('');
+        }
+
+        // Shared decks
+        const shared = res.shared || [];
+        document.getElementById('shared-deck-count').textContent = `(${shared.length})`;
+        if (shared.length === 0) {
+            sharedGrid.innerHTML = `<p class="col-span-full text-gray-500 text-sm py-4">No shared decks yet. Collaborators will appear here.</p>`;
+        } else {
+            sharedGrid.innerHTML = shared.map(d => renderDeckCard(d, false)).join('');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const check = setInterval(() => {
+            if (window.currentUser !== undefined) {
+                clearInterval(check);
+                if (window.currentUser) loadDecks();
+            }
+        }, 100);
+    });
+</script>
+{% endblock %}

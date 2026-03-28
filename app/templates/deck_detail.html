@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% block title %}Deck Builder{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- Deck Header -->
+    <div class="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-6" id="deck-header">
+        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-3 mb-1">
+                    <a href="/decks" class="text-gray-400 hover:text-white transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </a>
+                    <h1 class="text-2xl font-bold text-white" id="deck-title">Loading...</h1>
+                    <span id="deck-format-badge" class="text-xs px-2.5 py-1 rounded-full border"></span>
+                    <span id="deck-shared-badge" class="hidden text-xs bg-blue-900/40 text-blue-300 px-2.5 py-1 rounded-full border border-blue-800">Shared</span>
+                </div>
+                <p class="text-gray-400 text-sm ml-8" id="deck-description"></p>
+                <p class="text-gray-500 text-xs ml-8 mt-1" id="deck-meta"></p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0" id="deck-actions">
+                <button onclick="showImportModal()"
+                    class="flex items-center gap-1.5 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-sm text-white rounded-lg transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                    </svg>
+                    Import
+                </button>
+                <button onclick="showExportModal()"
+                    class="flex items-center gap-1.5 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-sm text-white rounded-lg transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Export
+                </button>
+                <button id="edit-deck-btn" onclick="showEditModal()"
+                    class="flex items-center gap-1.5 px-3 py-2 bg-purple-700 hover:bg-purple-600 text-sm text-white rounded-lg transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    Edit
+                </button>
+                <button id="delete-deck-btn" onclick="deleteDeck()"
+                    class="flex items-center gap-1.5 px-3 py-2 bg-red-900/50 hover:bg-red-800 text-sm text-red-300 hover:text-red-200 rounded-lg transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+
+        <!-- Left: Card Search & Collaborators -->
+        <div class="xl:col-span-1 space-y-4">
+
+            <!-- Add Card Panel -->
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-4">
+                <h3 class="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    Add Cards
+                </h3>
+
+                <!-- Board selector -->
+                <div class="flex gap-1 mb-3">
+                    <button onclick="setBoard('main')" id="board-main"
+                        class="flex-1 text-xs py-1.5 rounded-lg bg-purple-700 text-white border border-purple-600 transition-colors board-btn">Main</button>
+                    <button onclick="setBoard('side')" id="board-side"
+                        class="flex-1 text-xs py-1.5 rounded-lg bg-gray-700 text-gray-300 border border-gray-600 transition-colors board-btn">Side</button>
+                    <button onclick="setBoard('commander')" id="board-commander"
+                        class="flex-1 text-xs py-1.5 rounded-lg bg-gray-700 text-gray-300 border border-gray-600 transition-colors board-btn">Cmdr</button>
+                </div>
+
+                <div class="relative mb-2">
+                    <input type="text" id="deck-card-search"
+                        placeholder="Search cards..."
+                        class="w-full bg-gray-900 border border-gray-600 rounded-lg pl-8 pr-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+
+                <div id="deck-search-results" class="space-y-1.5 max-h-64 overflow-y-auto">
+                    <p class="text-xs text-gray-500 text-center py-3">Type to search cards</p>
+                </div>
+            </div>
+
+            <!-- Collaborators Panel -->
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-4" id="collaborators-panel">
+                <h3 class="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    Collaborators
+                </h3>
+                <div id="collaborator-list" class="space-y-2 mb-3"></div>
+                <div id="add-collab-section" class="hidden">
+                    <div class="flex gap-2">
+                        <input type="text" id="collab-username"
+                            placeholder="Username..."
+                            class="flex-1 bg-gray-900 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <button onclick="addCollaborator()"
+                            class="bg-purple-700 hover:bg-purple-600 text-white px-3 py-1.5 rounded-lg text-sm transition-colors">Add</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Availability Toggle -->
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-4" id="availability-panel" style="display:none;">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                        <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Availability
+                    </h3>
+                    <button onclick="loadAvailability()" class="text-xs text-purple-400 hover:text-purple-300">Refresh</button>
+                </div>
+                <div class="space-y-1 text-xs text-gray-400">
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-green-500 flex-shrink-0"></span>Fully owned</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-purple-500 flex-shrink-0"></span>In use in other decks</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-yellow-400 flex-shrink-0"></span>Partially owned</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-red-500 flex-shrink-0"></span>Not owned</div>
+                </div>
+                <div id="availability-summary" class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-400"></div>
+            </div>
+
+        </div>
+
+        <!-- Right: Deck Cards -->
+        <div class="xl:col-span-3">
+            <!-- Stats bar -->
+            <div class="flex items-center gap-4 mb-4 text-sm text-gray-400">
+                <span id="total-card-count" class="text-white font-semibold">0</span> cards
+                <span class="text-gray-600">|</span>
+                <span id="main-count">Main: 0</span>
+                <span id="side-count">Side: 0</span>
+                <span id="cmdr-count" class="hidden">Commander: 0</span>
+            </div>
+
+            <!-- Commander Board -->
+            <div id="commander-section" class="hidden mb-6">
+                <h3 class="text-base font-semibold text-purple-300 mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                    Commander
+                </h3>
+                <div id="commander-cards" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
+            </div>
+
+            <!-- Mainboard -->
+            <div class="mb-6">
+                <h3 class="text-base font-semibold text-white mb-3">Mainboard</h3>
+                <div id="main-cards" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    <div class="col-span-full flex justify-center py-8">
+                        <div class="spinner w-8 h-8"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sideboard -->
+            <div>
+                <h3 class="text-base font-semibold text-white mb-3">Sideboard</h3>
+                <div id="side-cards" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    <p class="col-span-full text-sm text-gray-500 py-4 text-center">No sideboard cards</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Deck Modal -->
+<div id="edit-deck-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+        <h3 class="text-xl font-semibold text-white mb-5">Edit Deck</h3>
+        <form id="edit-deck-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1.5">Deck Name</label>
+                <input type="text" id="edit-deck-name" required
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1.5">Format</label>
+                <select id="edit-deck-format"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <option value="commander">Commander</option>
+                    <option value="standard">Standard</option>
+                    <option value="modern">Modern</option>
+                    <option value="legacy">Legacy</option>
+                    <option value="vintage">Vintage</option>
+                    <option value="pioneer">Pioneer</option>
+                    <option value="pauper">Pauper</option>
+                    <option value="casual">Casual</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1.5">Description</label>
+                <textarea id="edit-deck-desc" rows="2"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"></textarea>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="hideEditModal()"
+                    class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg transition-colors font-medium">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div id="import-deck-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold text-white">Import Deck List</h3>
+            <button onclick="hideImportModal()" class="text-gray-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <p class="text-sm text-gray-400 mb-3">Paste a deck list in <code class="text-purple-300">4 Card Name (SET) 123</code> format. Use <code class="text-purple-300">// SIDEBOARD</code> to mark sideboard cards.</p>
+        <textarea id="import-deck-text" rows="14" placeholder="4 Lightning Bolt (M11) 149&#10;// SIDEBOARD&#10;2 Pyroblast (ME2) 48"
+            class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-200 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none mb-3"></textarea>
+        <label class="flex items-center gap-2 text-sm text-gray-300 mb-4 cursor-pointer">
+            <input type="checkbox" id="import-replace" class="w-4 h-4 accent-purple-500">
+            Replace existing cards
+        </label>
+        <!-- Results -->
+        <div id="import-deck-results" class="hidden mb-4 bg-gray-900 border border-gray-700 rounded-lg p-4 text-sm space-y-1">
+            <p class="text-gray-300">Cards added: <span id="import-deck-added" class="text-green-400 font-semibold">0</span></p>
+            <p class="text-gray-300">Entries updated: <span id="import-deck-updated" class="text-blue-400 font-semibold">0</span></p>
+            <div id="import-deck-notfound-box" class="hidden mt-2 text-xs text-red-300 space-y-0.5 max-h-24 overflow-y-auto"></div>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="hideImportModal()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg transition-colors">Cancel</button>
+            <button id="import-deck-btn" onclick="submitDeckImport()"
+                class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg transition-colors font-medium">
+                Import
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div id="export-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold text-white">Export Deck</h3>
+            <button onclick="document.getElementById('export-modal').classList.add('hidden')" class="text-gray-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <textarea id="export-text" rows="16" readonly
+            class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-200 font-mono focus:outline-none resize-none"></textarea>
+        <button onclick="copyExport()"
+            class="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg transition-colors">
+            Copy to Clipboard
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/decks.js"></script>
+{% endblock %}

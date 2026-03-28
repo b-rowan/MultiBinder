@@ -120,6 +120,27 @@ async def process_card_batch(batch: list) -> tuple[int, int, int]:
     return processed, skipped, errors
 
 
+class _AsyncBytesReader:
+    """Wraps an async bytes generator into a file-like object ijson can read."""
+    def __init__(self, aiter):
+        self._aiter = aiter
+        self._buf = b""
+
+    async def read(self, n=-1):
+        if n == 0:
+            return b""
+        while len(self._buf) < n or n == -1:
+            try:
+                self._buf += await self._aiter.__anext__()
+            except StopAsyncIteration:
+                break
+        if n == -1:
+            data, self._buf = self._buf, b""
+        else:
+            data, self._buf = self._buf[:n], self._buf[n:]
+        return data
+
+
 async def sync_cards(progress_callback: Optional[Callable] = None):
     """Download and sync all cards from Scryfall bulk data."""
     global sync_status
@@ -155,7 +176,7 @@ async def sync_cards(progress_callback: Optional[Callable] = None):
                 if content_length:
                     sync_status["message"] = f"Downloading {int(content_length) // 1024 // 1024}MB..."
 
-                async for card_data in ijson.items_async(response.aiter_bytes(), "item"):
+                async for card_data in ijson.items_async(_AsyncBytesReader(response.aiter_bytes()), "item"):
                     current_batch.append(card_data)
                     card_count += 1
 

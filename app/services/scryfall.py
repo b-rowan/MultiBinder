@@ -1,5 +1,5 @@
 import httpx
-import json
+import ijson
 import asyncio
 from typing import Callable, Optional
 from app.models.card import Card
@@ -151,24 +151,11 @@ async def sync_cards(progress_callback: Optional[Callable] = None):
             async with client.stream("GET", download_url) as response:
                 response.raise_for_status()
 
-                # Get content length if available
                 content_length = response.headers.get("content-length")
                 if content_length:
                     sync_status["message"] = f"Downloading {int(content_length) // 1024 // 1024}MB..."
 
-                # Collect the full JSON content
-                chunks = []
-                async for chunk in response.aiter_bytes(chunk_size=65536):
-                    chunks.append(chunk)
-
-                full_content = b"".join(chunks)
-                sync_status["message"] = "Parsing card data..."
-
-                cards_data = json.loads(full_content)
-                sync_status["total"] = len(cards_data)
-                sync_status["message"] = f"Processing {len(cards_data)} cards..."
-
-                for card_data in cards_data:
+                async for card_data in ijson.items_async(response.aiter_bytes(), "item"):
                     current_batch.append(card_data)
                     card_count += 1
 
@@ -182,15 +169,15 @@ async def sync_cards(progress_callback: Optional[Callable] = None):
                         sync_status["processed"] = total_processed
                         sync_status["skipped"] = total_skipped
                         sync_status["errors"] = total_errors
-                        sync_status["progress"] = int(card_count / sync_status["total"] * 100)
-                        sync_status["message"] = (
-                            f"Processing... {card_count}/{sync_status['total']} cards"
-                        )
+                        if content_length:
+                            sync_status["progress"] = int(
+                                response.num_bytes_downloaded / int(content_length) * 100
+                            )
+                        sync_status["message"] = f"Processing... {card_count} cards"
 
                         if progress_callback:
                             await progress_callback(sync_status)
 
-                        # Small yield to allow other requests to be handled
                         await asyncio.sleep(0)
 
                 # Process remaining batch

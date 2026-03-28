@@ -109,6 +109,7 @@ async def process_card_batch(batch: list) -> tuple[int, int, int]:
                     "layout": card_data.get("layout"),
                     "card_faces": card_faces,
                     "legalities": card_data.get("legalities", {}),
+                    "finishes": card_data.get("finishes", []),
                 },
             )
             processed += 1

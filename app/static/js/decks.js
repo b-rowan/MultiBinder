@@ -187,7 +187,7 @@ async function searchCardsForDeck(q) {
     const container = document.getElementById('deck-search-results');
     container.innerHTML = '<div class="flex justify-center py-2"><div class="spinner w-5 h-5"></div></div>';
 
-    const res = await API.get(`/api/cards/search?q=${encodeURIComponent(q)}&limit=15`);
+    const res = await API.get(`/api/cards/search?q=${encodeURIComponent(q)}&limit=15&unique=true`);
     if (!res) {
         container.innerHTML = '<p class="text-xs text-red-400 text-center py-2">Search failed</p>';
         return;
@@ -200,7 +200,7 @@ async function searchCardsForDeck(q) {
 
     container.innerHTML = res.cards.map(card => `
         <div class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-700 cursor-pointer transition-colors group border border-transparent hover:border-gray-600"
-            onclick="addCardToDeck('${card.scryfall_id}', ${JSON.stringify(card.name).replace(/"/g, '&quot;')})">
+            onclick="openVersionPicker(${JSON.stringify(card.name).replace(/"/g, '&quot;')})">
             <img src="${card.image_uri_small || ''}"
                 alt="${card.name}"
                 class="w-8 h-11 rounded object-cover flex-shrink-0"
@@ -502,6 +502,52 @@ async function submitDeckImport() {
 document.getElementById('import-deck-modal')?.addEventListener('click', (e) => {
     if (e.target === e.currentTarget) hideImportModal();
 });
+
+// ─── Version Picker ───────────────────────────────────────────────────────────
+
+const RARITY_COLORS = {
+    common: 'text-gray-400',
+    uncommon: 'text-blue-300',
+    rare: 'text-yellow-300',
+    mythic: 'text-orange-400',
+};
+
+async function openVersionPicker(cardName) {
+    const modal = document.getElementById('version-picker-modal');
+    document.getElementById('version-picker-title').textContent = cardName;
+    document.getElementById('version-picker-grid').innerHTML =
+        '<div class="col-span-full flex justify-center py-6"><div class="spinner w-6 h-6"></div></div>';
+    modal.classList.remove('hidden');
+
+    const printings = await API.get(`/api/cards/printings?name=${encodeURIComponent(cardName)}`);
+
+    if (!printings || !printings.length) {
+        document.getElementById('version-picker-grid').innerHTML =
+            '<p class="col-span-full text-sm text-gray-400 text-center py-4">No printings found</p>';
+        return;
+    }
+
+    document.getElementById('version-picker-grid').innerHTML = printings.map(card => `
+        <div class="cursor-pointer group" onclick="selectPrinting('${card.scryfall_id}', ${JSON.stringify(card.name).replace(/"/g, '&quot;')})">
+            <div class="rounded-lg overflow-hidden border-2 border-transparent group-hover:border-purple-500 transition-colors">
+                <img src="${card.image_uri_small || ''}" alt="${card.name}"
+                    class="w-full aspect-[63/88] object-cover"
+                    onerror="this.src=''">
+            </div>
+            <p class="text-xs text-gray-300 truncate mt-1">${card.set_name || card.set_code || ''}</p>
+            <p class="text-xs ${RARITY_COLORS[card.rarity] || 'text-gray-500'}">#${card.collector_number || '?'} · ${card.rarity || ''}</p>
+        </div>
+    `).join('');
+}
+
+function closeVersionPicker() {
+    document.getElementById('version-picker-modal').classList.add('hidden');
+}
+
+function selectPrinting(scryfallId, cardName) {
+    closeVersionPicker();
+    addCardToDeck(scryfallId, cardName);
+}
 
 // ─── Search Input ─────────────────────────────────────────────────────────────
 

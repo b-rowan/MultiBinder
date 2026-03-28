@@ -25,6 +25,7 @@ class CardOut(BaseModel):
     layout: Optional[str] = None
     card_faces: Optional[Any] = None
     legalities: dict = {}
+    finishes: List[str] = []
 
     class Config:
         from_attributes = True
@@ -33,11 +34,13 @@ class CardOut(BaseModel):
 class CollectionEntryCreate(BaseModel):
     card_id: str
     quantity: int = 1
-    foil: bool = False
+    finish: str = "nonfoil"
 
 
 class CollectionEntryUpdate(BaseModel):
     quantity: int
+    finish: Optional[str] = None
+    card_id: Optional[str] = None
 
 
 class CollectionEntryOut(BaseModel):

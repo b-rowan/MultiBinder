@@ -68,7 +68,7 @@ async def get_my_collection(
                 "legalities": card.legalities,
             },
             "quantity": entry.quantity,
-            "foil": entry.foil,
+            "finish": entry.finish,
             "added_at": entry.added_at.isoformat() if entry.added_at else None,
         })
 
@@ -100,7 +100,7 @@ async def get_user_collection(
             "card_id": card.scryfall_id,
             "card_name": card.name,
             "quantity": entry.quantity,
-            "foil": entry.foil,
+            "finish": entry.finish,
         })
 
     return {"user_id": user_id, "username": user.username, "entries": result}
@@ -117,7 +117,7 @@ async def add_to_collection(
 
     # Check if entry already exists
     existing = await UserCollection.filter(
-        user=current_user, card=card, foil=entry_data.foil
+        user=current_user, card=card, finish=entry_data.finish
     ).first()
 
     if existing:
@@ -129,7 +129,7 @@ async def add_to_collection(
         user=current_user,
         card=card,
         quantity=entry_data.quantity,
-        foil=entry_data.foil,
+        finish=entry_data.finish,
     )
 
     return {"id": entry.id, "message": "Added to collection", "quantity": entry.quantity}
@@ -146,6 +146,13 @@ async def update_collection_entry(
         raise HTTPException(status_code=404, detail="Collection entry not found")
 
     entry.quantity = update_data.quantity
+    if update_data.finish is not None:
+        entry.finish = update_data.finish
+    if update_data.card_id is not None:
+        card = await Card.filter(scryfall_id=update_data.card_id).first()
+        if not card:
+            raise HTTPException(status_code=404, detail="Card not found")
+        entry.card = card
     await entry.save()
 
     return {"id": entry.id, "quantity": entry.quantity, "message": "Updated"}
@@ -187,7 +194,11 @@ async def import_collection_csv(
         except (ValueError, TypeError):
             quantity = 1
 
-        foil = foil_str == "foil"
+        # Map ManaBox "foil"/"etched"/"normal" to our finish values
+        if foil_str in ("foil", "etched", "glossy"):
+            finish = foil_str
+        else:
+            finish = "nonfoil"
 
         card = await Card.filter(scryfall_id=scryfall_id).first()
         if not card:
@@ -196,7 +207,7 @@ async def import_collection_csv(
             continue
 
         existing = await UserCollection.filter(
-            user=current_user, card=card, foil=foil
+            user=current_user, card=card, finish=finish
         ).first()
 
         if existing:
@@ -208,7 +219,7 @@ async def import_collection_csv(
                 user=current_user,
                 card=card,
                 quantity=quantity,
-                foil=foil,
+                finish=finish,
             )
             added += 1
 

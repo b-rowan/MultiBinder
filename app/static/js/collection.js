@@ -11,6 +11,35 @@ let selectedCard = null;
 let modalQty = 1;
 let collectionSearchDebounce = null;
 
+// Edit modal state
+let editingEntry = null;
+let editingCard = null;
+let editModalQty = 1;
+
+// Version picker state
+let versionPickerMode = null; // 'add' or 'change'
+
+const RARITY_COLORS = {
+    common: 'text-gray-400',
+    uncommon: 'text-blue-300',
+    rare: 'text-yellow-300',
+    mythic: 'text-orange-400',
+};
+
+const FINISH_LABELS = {
+    nonfoil: 'Regular',
+    foil: '✦ Foil',
+    etched: '◈ Etched',
+    glossy: '◉ Glossy',
+};
+
+const FINISH_COLORS = {
+    nonfoil: 'bg-gray-600 text-gray-300',
+    foil: 'bg-blue-700 text-blue-200',
+    etched: 'bg-purple-700 text-purple-200',
+    glossy: 'bg-yellow-700 text-yellow-200',
+};
+
 // ─── Search Cards ─────────────────────────────────────────────────────────────
 
 async function searchCards(page = 1) {
@@ -30,6 +59,7 @@ async function searchCards(page = 1) {
         color,
         rarity,
         card_type: cardType,
+        unique: true,
     });
 
     const res = await API.get(`/api/cards/search?${params}`);
@@ -145,28 +175,33 @@ function renderCollection(entries) {
 
     container.innerHTML = entries.map(entry => {
         const card = entry.card;
+        const isFoilish = entry.finish && entry.finish !== 'nonfoil';
         const rarityBorder = {
             common: 'border-gray-600',
             uncommon: 'border-slate-400',
             rare: 'border-yellow-500',
             mythic: 'border-orange-500',
         }[card.rarity] || 'border-gray-600';
+        const foilBadge = entry.finish === 'foil' ? '✦'
+            : entry.finish === 'etched' ? '◈'
+            : entry.finish === 'glossy' ? '◉'
+            : null;
 
         return `
             <div class="relative group card-hover cursor-pointer" onclick="openCollectionCardModal(${JSON.stringify(entry).replace(/"/g, '&quot;')})">
-                <div class="relative rounded-xl overflow-hidden border-2 ${entry.foil ? 'border-purple-400 shadow-purple-500/20' : rarityBorder} shadow-lg">
+                <div class="relative rounded-xl overflow-hidden border-2 ${isFoilish ? 'border-purple-400 shadow-purple-500/20' : rarityBorder} shadow-lg">
                     <img src="${card.image_uri_small || ''}"
                         alt="${card.name}"
                         class="w-full aspect-[63/88] object-cover"
                         loading="lazy"
                         onerror="this.src=''"
                     >
-                    ${entry.foil ? '<div class="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-transparent pointer-events-none"></div>' : ''}
+                    ${isFoilish ? '<div class="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-transparent pointer-events-none"></div>' : ''}
                     <!-- Quantity badge -->
                     <div class="absolute top-1.5 right-1.5 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded-md">
                         ×${entry.quantity}
                     </div>
-                    ${entry.foil ? '<div class="absolute top-1.5 left-1.5 bg-purple-600/80 text-white text-xs px-1.5 py-0.5 rounded-md">✨</div>' : ''}
+                    ${foilBadge ? `<div class="absolute top-1.5 left-1.5 bg-purple-600/80 text-white text-xs px-1.5 py-0.5 rounded-md">${foilBadge}</div>` : ''}
                     <!-- Hover overlay -->
                     <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end justify-center opacity-0 group-hover:opacity-100">
                         <div class="pb-2 flex gap-1">
@@ -209,7 +244,7 @@ function updateCollectionPagination(data) {
 // ─── Add / Remove / Update ────────────────────────────────────────────────────
 
 async function quickAddToCollection(cardId) {
-    const res = await API.post('/api/collection', { card_id: cardId, quantity: 1, foil: false });
+    const res = await API.post('/api/collection', { card_id: cardId, quantity: 1, finish: 'nonfoil' });
     if (res && res.id) {
         showFlash('Added to collection!', 'success');
         loadCollection(currentCollPage);
@@ -221,7 +256,7 @@ async function quickAddToCollection(cardId) {
 async function addToCollectionFromModal() {
     if (!selectedCard) return;
 
-    const foil = document.getElementById('modal-foil').checked;
+    const finish = document.getElementById('modal-finish').value;
     const btn = document.getElementById('modal-add-btn');
     btn.disabled = true;
     btn.textContent = 'Adding...';
@@ -229,7 +264,7 @@ async function addToCollectionFromModal() {
     const res = await API.post('/api/collection', {
         card_id: selectedCard.scryfall_id,
         quantity: modalQty,
-        foil,
+        finish,
     });
 
     btn.disabled = false;
@@ -265,7 +300,7 @@ async function removeFromCollection(entryId) {
     }
 }
 
-// ─── Modal ────────────────────────────────────────────────────────────────────
+// ─── Add Card Modal (from version picker) ────────────────────────────────────
 
 function openCardModal(card) {
     selectedCard = card;
@@ -279,13 +314,9 @@ function openCardModal(card) {
     document.getElementById('modal-set').textContent = card.set_name ? `${card.set_name} · ${card.collector_number || ''}` : '';
     document.getElementById('modal-rarity').textContent = card.rarity ? card.rarity.charAt(0).toUpperCase() + card.rarity.slice(1) : '';
     document.getElementById('modal-qty').textContent = '1';
-    document.getElementById('modal-foil').checked = false;
+    document.getElementById('modal-finish').value = 'nonfoil';
+    updateModalFinishOptions(card.finishes || []);
     document.getElementById('card-modal').classList.remove('hidden');
-}
-
-function openCollectionCardModal(entry) {
-    // Just show card details for collection entries
-    openCardModal(entry.card);
 }
 
 function closeCardModal() {
@@ -298,10 +329,176 @@ function adjustModalQty(delta) {
     document.getElementById('modal-qty').textContent = modalQty;
 }
 
-// Close modal on backdrop click
 document.getElementById('card-modal')?.addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeCardModal();
 });
+
+// ─── Collection Edit Modal ────────────────────────────────────────────────────
+
+function openCollectionCardModal(entry) {
+    editingEntry = entry;
+    editingCard = { ...entry.card };
+    editModalQty = entry.quantity;
+
+    document.getElementById('edit-modal-card-name').textContent = editingCard.name;
+    document.getElementById('edit-modal-card-image').src = editingCard.image_uri_normal || editingCard.image_uri_small || '';
+    document.getElementById('edit-modal-mana-cost').textContent = editingCard.mana_cost || '';
+    document.getElementById('edit-modal-type').textContent = editingCard.type_line || '';
+    document.getElementById('edit-modal-qty').textContent = editModalQty;
+    document.getElementById('edit-modal-finish').value = entry.finish || 'nonfoil';
+    updateEditModalFinishOptions(editingCard.finishes || []);
+    updateEditModalVersionBtn();
+
+    document.getElementById('collection-edit-modal').classList.remove('hidden');
+}
+
+function updateEditModalVersionBtn() {
+    const label = editingCard.set_name
+        ? `${editingCard.set_name} · #${editingCard.collector_number}`
+        : (editingCard.set_code || 'Unknown printing');
+    document.getElementById('edit-version-btn').textContent = label;
+}
+
+function _populateFinishSelect(selectId, finishes, currentValue) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    const all = ['nonfoil', 'foil', 'etched', 'glossy'];
+    const available = finishes && finishes.length ? finishes : all;
+    sel.innerHTML = available.map(f =>
+        `<option value="${f}">${FINISH_LABELS[f] || f}</option>`
+    ).join('');
+    // Keep current value if still available, else reset to first option
+    sel.value = available.includes(currentValue) ? currentValue : available[0];
+}
+
+function updateModalFinishOptions(finishes) {
+    const current = document.getElementById('modal-finish')?.value || 'nonfoil';
+    _populateFinishSelect('modal-finish', finishes, current);
+}
+
+function updateEditModalFinishOptions(finishes) {
+    const current = document.getElementById('edit-modal-finish')?.value || 'nonfoil';
+    _populateFinishSelect('edit-modal-finish', finishes, current);
+}
+
+function closeEditModal() {
+    document.getElementById('collection-edit-modal').classList.add('hidden');
+    editingEntry = null;
+    editingCard = null;
+}
+
+function adjustEditModalQty(delta) {
+    editModalQty = Math.max(1, Math.min(99, editModalQty + delta));
+    document.getElementById('edit-modal-qty').textContent = editModalQty;
+}
+
+async function saveCollectionEdit() {
+    if (!editingEntry) return;
+
+    const finish = document.getElementById('edit-modal-finish').value;
+    const body = { quantity: editModalQty, finish };
+    if (editingCard.scryfall_id !== editingEntry.card.scryfall_id) {
+        body.card_id = editingCard.scryfall_id;
+    }
+
+    const res = await API.put(`/api/collection/${editingEntry.id}`, body);
+    if (res && res.id) {
+        showFlash('Collection updated!', 'success');
+        closeEditModal();
+        loadCollection(currentCollPage);
+    } else {
+        showFlash(res?.detail || 'Failed to update', 'error');
+    }
+}
+
+async function removeFromCollectionModal() {
+    if (!editingEntry) return;
+    const res = await API.delete(`/api/collection/${editingEntry.id}`);
+    if (res) {
+        showFlash('Removed from collection', 'info');
+        closeEditModal();
+        loadCollection(currentCollPage);
+    }
+}
+
+// ─── Version Picker ───────────────────────────────────────────────────────────
+
+function openVersionPickerFromAddModal() {
+    versionPickerMode = 'add';
+    openVersionPicker(selectedCard.name);
+}
+
+function openVersionPickerForChange() {
+    versionPickerMode = 'change';
+    openVersionPicker(editingCard.name);
+}
+
+async function openVersionPicker(cardName) {
+    const modal = document.getElementById('version-picker-modal');
+    const grid = document.getElementById('version-picker-grid');
+    const title = document.getElementById('version-picker-title');
+
+    title.textContent = cardName;
+    grid.innerHTML = '<div class="col-span-full flex justify-center py-4"><div class="spinner w-8 h-8"></div></div>';
+    modal.classList.remove('hidden');
+
+    const cards = await API.get(`/api/cards/printings?name=${encodeURIComponent(cardName)}`);
+    if (!cards || cards.length === 0) {
+        grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">No printings found</p>';
+        return;
+    }
+
+    grid.innerHTML = cards.map(card => {
+        const rarityColor = RARITY_COLORS[card.rarity] || 'text-gray-400';
+        const finishes = card.finishes && card.finishes.length ? card.finishes : ['nonfoil'];
+        const cardJson = JSON.stringify(card).replace(/"/g, '&quot;');
+        const finishBadges = finishes.map(f => `
+            <button onclick="event.stopPropagation(); selectPrinting(${cardJson}, '${f}')"
+                class="text-xs px-1.5 py-0.5 rounded ${FINISH_COLORS[f] || 'bg-gray-600 text-gray-300'} hover:opacity-80 transition-opacity"
+                title="${FINISH_LABELS[f] || f}">
+                ${FINISH_LABELS[f] || f}
+            </button>
+        `).join('');
+        return `
+            <div class="${finishes.length === 1 ? 'cursor-pointer' : ''} group" ${finishes.length === 1 ? `onclick="selectPrinting(${cardJson}, '${finishes[0]}')"` : ''}>
+                <div class="relative rounded-lg overflow-hidden border-2 border-gray-600 group-hover:border-purple-400 transition-colors">
+                    <img src="${card.image_uri_small || ''}" alt="${card.name}"
+                        class="w-full aspect-[63/88] object-cover"
+                        onerror="this.src=''">
+                </div>
+                <p class="text-xs text-gray-400 mt-1 truncate">${card.set_name || card.set_code || ''}</p>
+                <p class="text-xs ${rarityColor} mb-1">#${card.collector_number || ''}</p>
+                <div class="flex flex-wrap gap-1">${finishBadges}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function closeVersionPicker() {
+    document.getElementById('version-picker-modal').classList.add('hidden');
+}
+
+function selectPrinting(card, finish) {
+    closeVersionPicker();
+    if (versionPickerMode === 'add') {
+        selectedCard = card;
+        document.getElementById('modal-card-name').textContent = card.name;
+        document.getElementById('modal-card-image').src = card.image_uri_normal || card.image_uri_small || '';
+        document.getElementById('modal-mana-cost').textContent = card.mana_cost || '';
+        document.getElementById('modal-type').textContent = card.type_line || '';
+        document.getElementById('modal-oracle').textContent = card.oracle_text || '';
+        document.getElementById('modal-set').textContent = card.set_name ? `${card.set_name} · ${card.collector_number || ''}` : '';
+        document.getElementById('modal-rarity').textContent = card.rarity ? card.rarity.charAt(0).toUpperCase() + card.rarity.slice(1) : '';
+        updateModalFinishOptions(card.finishes || []);
+        if (finish) document.getElementById('modal-finish').value = finish;
+    } else if (versionPickerMode === 'change') {
+        editingCard = card;
+        updateEditModalVersionBtn();
+        updateEditModalFinishOptions(card.finishes || []);
+        if (finish) document.getElementById('edit-modal-finish').value = finish;
+        document.getElementById('edit-modal-card-image').src = card.image_uri_normal || card.image_uri_small || '';
+    }
+}
 
 // ─── Event Listeners ──────────────────────────────────────────────────────────
 

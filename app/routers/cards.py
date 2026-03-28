@@ -6,6 +6,7 @@ from app.services.auth import get_current_user
 from app.models.user import User
 from tortoise import connections
 from tortoise.expressions import Q
+from typing import List
 import math
 
 router = APIRouter()
@@ -25,6 +26,7 @@ async def search_cards(
     color: str = Query(default="", description="Filter by color identity"),
     rarity: str = Query(default="", description="Filter by rarity"),
     card_type: str = Query(default="", description="Filter by type"),
+    unique: bool = Query(default=False, description="Return one result per card name"),
     current_user: User = Depends(get_current_user),
 ):
     query = Card.all()
@@ -48,6 +50,23 @@ async def search_cards(
     if card_type:
         query = query.filter(type_line__icontains=card_type)
 
+    if unique:
+        # Fetch a large batch and deduplicate by name in Python
+        fetch_limit = min(limit * 20, 500)
+        all_cards = await query.order_by("name").limit(fetch_limit)
+        seen: dict = {}
+        for card in all_cards:
+            if card.name not in seen:
+                seen[card.name] = card
+        deduped = list(seen.values())[:limit]
+        return CardSearchResult(
+            cards=[CardOut.model_validate(c.__dict__) for c in deduped],
+            total=len(seen),
+            page=1,
+            limit=limit,
+            pages=1,
+        )
+
     total = await query.count()
     pages = math.ceil(total / limit) if total > 0 else 1
     offset = (page - 1) * limit
@@ -61,6 +80,15 @@ async def search_cards(
         limit=limit,
         pages=pages,
     )
+
+
+@router.get("/api/cards/printings", response_model=List[CardOut])
+async def get_card_printings(
+    name: str = Query(..., description="Exact card name"),
+    current_user: User = Depends(get_current_user),
+):
+    cards = await Card.filter(name=name).order_by("set_code", "collector_number").all()
+    return [CardOut.model_validate(c.__dict__) for c in cards]
 
 
 @router.get("/api/cards/{scryfall_id}", response_model=CardOut)

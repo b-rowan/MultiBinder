@@ -24,6 +24,7 @@ class Card(Model):
     layout = fields.CharField(max_length=50, null=True)
     card_faces = fields.JSONField(null=True)  # For double-faced cards
     legalities = fields.JSONField(default=dict)
+    finishes = fields.JSONField(default=list)  # e.g. ["nonfoil", "foil"] or ["nonfoil", "etched"]
 
     # Reverse relations
     collection_entries: fields.ReverseRelation["UserCollection"]
@@ -38,9 +39,9 @@ class UserCollection(Model):
     user = fields.ForeignKeyField("models.User", related_name="collection")
     card = fields.ForeignKeyField("models.Card", related_name="collection_entries")
     quantity = fields.IntField(default=1)
-    foil = fields.BooleanField(default=False)
+    finish = fields.CharField(max_length=20, default="nonfoil")  # nonfoil, foil, etched, glossy
     added_at = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
         table = "user_collection"
-        unique_together = (("user", "card", "foil"),)
+        unique_together = (("user", "card", "finish"),)

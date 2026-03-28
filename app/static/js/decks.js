@@ -122,6 +122,7 @@ function renderCardGrid(containerId, cards) {
         const avail = getAvailabilityStatus(card.scryfall_id);
         const borderColor = avail
             ? (avail.status === 'owned' ? 'border-green-500'
+                : avail.status === 'collab_owned' ? 'border-blue-500'
                 : avail.status === 'in_use' ? 'border-purple-500'
                 : avail.status === 'partial' ? 'border-yellow-400'
                 : 'border-red-500')

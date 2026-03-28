@@ -494,8 +494,14 @@ async def get_deck_availability(
 
         free = max(0, total_available - in_other_decks)
 
-        if free >= needed:
+        current_user_qty = sum(
+            o["quantity"] for o in owners_data if o["user_id"] == current_user.id
+        )
+
+        if free >= needed and current_user_qty > 0:
             status = "owned"
+        elif free >= needed:
+            status = "collab_owned"
         elif total_available >= needed:
             status = "in_use"
         elif total_available > 0:

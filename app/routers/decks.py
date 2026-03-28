@@ -497,15 +497,26 @@ async def get_deck_availability(
         current_user_qty = sum(
             o["quantity"] for o in owners_data if o["user_id"] == current_user.id
         )
+        collab_qty = total_available - current_user_qty
 
-        if free >= needed and current_user_qty > 0:
-            status = "owned"
-        elif free >= needed:
-            status = "collab_owned"
+        if free >= needed:
+            if current_user_qty > 0 and collab_qty > 0:
+                status = "mixed_you_enough"   # both own some, combined free is enough
+            elif current_user_qty >= needed:
+                status = "owned"              # you alone cover it
+            else:
+                status = "collab_owned"       # collab alone covers it
         elif total_available >= needed:
-            status = "in_use"
-        elif total_available > 0:
-            status = "partial"
+            if current_user_qty > 0:
+                status = "in_use"             # you have copies but they're in other decks
+            else:
+                status = "collab_in_use"      # collab has copies but they're in other decks
+        elif current_user_qty > 0 and collab_qty > 0:
+            status = "partial_mixed"          # both own some but combined still not enough
+        elif current_user_qty > 0:
+            status = "partial"                # only you own some, not enough
+        elif collab_qty > 0:
+            status = "collab_partial"         # only collab owns some, not enough
         else:
             status = "missing"
 

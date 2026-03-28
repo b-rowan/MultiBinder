@@ -120,13 +120,21 @@ function renderCardGrid(containerId, cards) {
     container.innerHTML = cards.map(dc => {
         const card = dc.card;
         const avail = getAvailabilityStatus(card.scryfall_id);
-        const borderColor = avail
-            ? (avail.status === 'owned' ? 'border-green-500'
-                : avail.status === 'collab_owned' ? 'border-blue-500'
-                : avail.status === 'in_use' ? 'border-purple-500'
-                : avail.status === 'partial' ? 'border-yellow-400'
-                : 'border-red-500')
-            : 'border-gray-600';
+        const BORDER_COLORS = {
+            owned:             'border-green-500',
+            mixed_you_enough:  'border-lime-400',
+            collab_owned:      'border-emerald-800',
+
+            in_use:            'border-purple-500',
+            collab_in_use:     'border-pink-400',
+
+            partial:           'border-yellow-400',
+            collab_partial:    'border-orange-400',
+            partial_mixed:     'border-amber-400',
+
+            missing:           'border-red-500',
+        };
+        const borderColor = avail ? (BORDER_COLORS[avail.status] || 'border-gray-600') : 'border-gray-600';
 
         return `
             <div class="relative group card-hover">

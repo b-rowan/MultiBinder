@@ -12,6 +12,7 @@ class User(Model):
 
     # Reverse relations
     collection: fields.ReverseRelation["UserCollection"]
+    collections: fields.ReverseRelation["Collection"]
     owned_decks: fields.ReverseRelation["Deck"]
 
     class Meta:

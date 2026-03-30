@@ -31,10 +31,40 @@ class CardOut(BaseModel):
         from_attributes = True
 
 
+class CollectionCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    type: str = "personal"
+    external_source: Optional[str] = None
+    external_url: Optional[str] = None
+
+
+class CollectionUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    external_url: Optional[str] = None
+
+
+class CollectionOut(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    type: str
+    external_source: Optional[str] = None
+    external_url: Optional[str] = None
+    last_synced: Optional[datetime] = None
+    created_at: datetime
+    entry_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+
 class CollectionEntryCreate(BaseModel):
     card_id: str
     quantity: int = 1
     finish: str = "nonfoil"
+    collection_id: Optional[int] = None
 
 
 class CollectionEntryUpdate(BaseModel):

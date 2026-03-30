@@ -19,6 +19,11 @@ let editModalQty = 1;
 // Version picker state
 let versionPickerMode = null; // 'add' or 'change'
 
+// Active collection state
+let activeCollectionId = null;
+let activeCollectionType = 'personal'; // 'personal' or 'external'
+let collectionsCache = [];
+
 const RARITY_COLORS = {
     common: 'text-gray-400',
     uncommon: 'text-blue-300',
@@ -146,6 +151,7 @@ async function loadCollection(page = 1) {
     }
 
     const params = new URLSearchParams({ page, limit: 40, q });
+    if (activeCollectionId) params.set('collection_id', activeCollectionId);
     const res = await API.get(`/api/collection?${params}`);
 
     if (!res) {
@@ -244,7 +250,16 @@ function updateCollectionPagination(data) {
 // ─── Add / Remove / Update ────────────────────────────────────────────────────
 
 async function quickAddToCollection(cardId) {
-    const res = await API.post('/api/collection', { card_id: cardId, quantity: 1, finish: 'nonfoil' });
+    if (activeCollectionType === 'external') {
+        showFlash('External collections are read-only', 'error');
+        return;
+    }
+    const res = await API.post('/api/collection', {
+        card_id: cardId,
+        quantity: 1,
+        finish: 'nonfoil',
+        collection_id: activeCollectionId,
+    });
     if (res && res.id) {
         showFlash('Added to collection!', 'success');
         loadCollection(currentCollPage);
@@ -255,6 +270,10 @@ async function quickAddToCollection(cardId) {
 
 async function addToCollectionFromModal() {
     if (!selectedCard) return;
+    if (activeCollectionType === 'external') {
+        showFlash('External collections are read-only', 'error');
+        return;
+    }
 
     const finish = document.getElementById('modal-finish').value;
     const btn = document.getElementById('modal-add-btn');
@@ -265,6 +284,7 @@ async function addToCollectionFromModal() {
         card_id: selectedCard.scryfall_id,
         quantity: modalQty,
         finish,
+        collection_id: activeCollectionId,
     });
 
     btn.disabled = false;
@@ -568,9 +588,12 @@ async function submitImport() {
     formData.append('file', importFile);
 
     const token = localStorage.getItem('token');
+    const importUrl = activeCollectionId
+        ? `/api/collection/import?collection_id=${activeCollectionId}`
+        : '/api/collection/import';
     let res;
     try {
-        const response = await fetch('/api/collection/import', {
+        const response = await fetch(importUrl, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },
             body: formData,
@@ -612,6 +635,170 @@ document.getElementById('import-modal')?.addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeImportModal();
 });
 
+// ─── Collection Management ────────────────────────────────────────────────────
+
+async function loadCollections() {
+    const collections = await API.get('/api/collections');
+    if (!collections) return;
+
+    collectionsCache = collections;
+    const select = document.getElementById('collection-select');
+    select.innerHTML = collections.map(c => {
+        const label = c.type === 'external'
+            ? `${c.name} (${c.entry_count} cards) [${c.external_source || 'external'}]`
+            : `${c.name} (${c.entry_count} cards)`;
+        return `<option value="${c.id}">${label}</option>`;
+    }).join('');
+
+    // Default to first collection
+    if (collections.length > 0 && !activeCollectionId) {
+        activeCollectionId = collections[0].id;
+        activeCollectionType = collections[0].type;
+    }
+
+    if (activeCollectionId) {
+        select.value = activeCollectionId;
+    }
+
+    updateCollectionUI();
+    loadCollection(1);
+}
+
+function updateCollectionUI() {
+    const coll = collectionsCache.find(c => c.id === activeCollectionId);
+    if (!coll) return;
+
+    activeCollectionType = coll.type;
+
+    const isExternal = coll.type === 'external';
+    const syncBtn = document.getElementById('sync-btn');
+    const lastSyncedLabel = document.getElementById('last-synced-label');
+    const externalBadge = document.getElementById('external-badge');
+    const importBtn = document.getElementById('import-btn');
+    const deleteBtn = document.getElementById('delete-collection-btn');
+    const myCardsTitle = document.getElementById('my-cards-title');
+
+    syncBtn?.classList.toggle('hidden', !isExternal);
+    externalBadge?.classList.toggle('hidden', !isExternal);
+    importBtn?.classList.toggle('hidden', isExternal);
+
+    if (myCardsTitle) myCardsTitle.textContent = coll.name;
+
+    if (isExternal && coll.last_synced) {
+        const d = new Date(coll.last_synced);
+        lastSyncedLabel.textContent = `Synced ${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
+        lastSyncedLabel.classList.remove('hidden');
+    } else {
+        lastSyncedLabel?.classList.add('hidden');
+    }
+
+    // Show delete button only for non-default collections
+    const isDefault = collectionsCache.filter(c => c.type === 'personal').length <= 1 && coll.type === 'personal';
+    deleteBtn?.classList.toggle('hidden', isDefault);
+}
+
+function onCollectionChange() {
+    const select = document.getElementById('collection-select');
+    activeCollectionId = parseInt(select.value);
+    updateCollectionUI();
+    loadCollection(1);
+}
+
+async function syncActiveCollection() {
+    const btn = document.getElementById('sync-btn');
+    if (!activeCollectionId) return;
+    btn.disabled = true;
+    btn.textContent = 'Syncing...';
+
+    const res = await API.post(`/api/collections/${activeCollectionId}/sync`, {});
+    btn.disabled = false;
+    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Sync`;
+
+    if (res && res.message) {
+        const skipped = res.not_found?.length || 0;
+        showFlash(`Synced "${res.source_name}": ${res.added} cards added${skipped ? `, ${skipped} not found` : ''}`, 'success');
+        await loadCollections();
+    } else {
+        showFlash(res?.detail || 'Sync failed', 'error');
+    }
+}
+
+async function deleteActiveCollection() {
+    if (!activeCollectionId) return;
+    const coll = collectionsCache.find(c => c.id === activeCollectionId);
+    if (!coll) return;
+    if (!confirm(`Delete collection "${coll.name}"? This will remove all ${coll.entry_count} cards in it.`)) return;
+
+    const res = await API.delete(`/api/collections/${activeCollectionId}`);
+    if (res && res.message) {
+        showFlash('Collection deleted', 'info');
+        activeCollectionId = null;
+        await loadCollections();
+    } else {
+        showFlash(res?.detail || 'Failed to delete collection', 'error');
+    }
+}
+
+// ─── New Collection Modal ─────────────────────────────────────────────────────
+
+function openNewCollectionModal() {
+    document.getElementById('new-coll-name').value = '';
+    document.getElementById('new-coll-description').value = '';
+    document.querySelector('input[name="new-coll-type"][value="personal"]').checked = true;
+    document.getElementById('new-coll-url').value = '';
+    document.getElementById('external-fields').classList.add('hidden');
+    document.getElementById('new-collection-modal').classList.remove('hidden');
+    document.getElementById('new-coll-name').focus();
+}
+
+function closeNewCollectionModal() {
+    document.getElementById('new-collection-modal').classList.add('hidden');
+}
+
+function toggleExternalFields() {
+    const type = document.querySelector('input[name="new-coll-type"]:checked')?.value;
+    document.getElementById('external-fields').classList.toggle('hidden', type !== 'external');
+}
+
+async function submitNewCollection() {
+    const name = document.getElementById('new-coll-name').value.trim();
+    if (!name) {
+        showFlash('Please enter a collection name', 'error');
+        return;
+    }
+
+    const type = document.querySelector('input[name="new-coll-type"]:checked')?.value || 'personal';
+    const description = document.getElementById('new-coll-description').value.trim();
+    const externalSource = type === 'external' ? document.getElementById('new-coll-source').value : null;
+    const externalUrl = type === 'external' ? document.getElementById('new-coll-url').value.trim() : null;
+
+    if (type === 'external' && !externalUrl) {
+        showFlash('Please enter the external deck URL', 'error');
+        return;
+    }
+
+    const res = await API.post('/api/collections', {
+        name,
+        description: description || null,
+        type,
+        external_source: externalSource,
+        external_url: externalUrl,
+    });
+
+    if (res && res.id) {
+        closeNewCollectionModal();
+        activeCollectionId = res.id;
+        await loadCollections();
+        if (type === 'external') {
+            showFlash(`Collection created. Click Sync to load cards from ${externalSource}.`, 'success');
+        } else {
+            showFlash('Collection created!', 'success');
+        }
+    } else {
+        showFlash(res?.detail || 'Failed to create collection', 'error');
+    }
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -619,7 +806,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.currentUser !== undefined) {
             clearInterval(check);
             if (window.currentUser) {
-                loadCollection(1);
+                loadCollections();
             }
         }
     }, 100);

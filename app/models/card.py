@@ -37,6 +37,7 @@ class Card(Model):
 class UserCollection(Model):
     id = fields.IntField(pk=True)
     user = fields.ForeignKeyField("models.User", related_name="collection")
+    collection = fields.ForeignKeyField("models.Collection", related_name="entries")
     card = fields.ForeignKeyField("models.Card", related_name="collection_entries")
     quantity = fields.IntField(default=1)
     finish = fields.CharField(max_length=20, default="nonfoil")  # nonfoil, foil, etched, glossy
@@ -44,4 +45,4 @@ class UserCollection(Model):
 
     class Meta:
         table = "user_collection"
-        unique_together = (("user", "card", "finish"),)
+        unique_together = (("collection", "card", "finish"),)

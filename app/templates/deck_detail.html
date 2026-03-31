@@ -123,17 +123,20 @@
                     </h3>
                     <button onclick="loadAvailability()" class="text-xs text-purple-400 hover:text-purple-300">Refresh</button>
                 </div>
-                <div class="space-y-1 text-xs text-gray-400">
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-green-500 flex-shrink-0"></span>You have enough</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-lime-500 flex-shrink-0"></span>You &amp; collaborator have enough combined</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-emerald-800 flex-shrink-0"></span>Collaborator has enough</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-purple-500 flex-shrink-0"></span>You have enough, but in other decks</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-rose-400 flex-shrink-0"></span>You &amp; collaborator have enough, but some in other decks</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-pink-400 flex-shrink-0"></span>Collaborator has enough, but in other decks</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-yellow-400 flex-shrink-0"></span>Partial — yours only, not enough</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-amber-500 flex-shrink-0"></span>Partial — you &amp; collaborator, not enough</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-orange-600 flex-shrink-0"></span>Partial — collaborator only, not enough</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded border-2 border-red-500 flex-shrink-0"></span>Not owned</div>
+
+                <div class="flex flex-col ms-2 gap-2 text-xs text-gray-400">
+                    <ul role="list">
+                        <li class="flex items-center py-2"><span class="h-7 w-7 aspect-square rounded-full bg-green-500"></span><div class="ml-3"><p>You have enough</p></div></li>
+                        <li class="flex items-center py-2"><span class="h-7 w-7 aspect-square rounded-full bg-lime-500"></span><div class="ml-3"><p>You &amp; collaborator have enough combined</p></div></li>
+                        <li class="flex items-center py-2"><span class="h-7 w-7 aspect-square rounded-full bg-emerald-800"></span><div class="ml-3"><p>Collaborator has enough</p></div></li>
+                        <li class="flex items-center py-2"><span class="h-7 w-7 aspect-square rounded-full bg-purple-500"></span><div class="ml-3"><p>You have enough, but in other decks</p></div></li>
+                        <li class="flex items-center py-2"><span class="h-7 w-7 aspect-square rounded-full bg-rose-400"></span><div class="ml-3"><p>You &amp; collaborator have enough, but some in other decks</p></div></li>
+                        <li class="flex items-center py-2"><span class="h-7 w-7 aspect-square rounded-full bg-pink-400"></span><div class="ml-3"><p>Collaborator has enough, but in other decks</p></div></li>
+                        <li class="flex items-center py-2"><span class="h-7 w-7 aspect-square rounded-full bg-yellow-400"></span><div class="ml-3"><p>Partial — yours only, not enough</p></div></li>
+                        <li class="flex items-center py-2"><span class="h-7 w-7 aspect-square rounded-full bg-amber-500"></span><div class="ml-3"><p>Partial — you &amp; collaborator, not enough</p></div></li>
+                        <li class="flex items-center py-2"><span class="h-7 w-7 aspect-square rounded-full bg-orange-600"></span><div class="ml-3"><p>Partial — collaborator only, not enough</p></div></li>
+                        <li class="flex items-center py-2"><span class="h-7 w-7 aspect-square rounded-full bg-red-500"></span><div class="ml-3"><p>Not owned</p></div></li>
+                    </ul>
                 </div>
                 <div id="availability-summary" class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-400"></div>
             </div>

@@ -24,6 +24,20 @@ let activeCollectionId = null;
 let activeCollectionType = 'personal'; // 'personal' or 'external'
 let collectionsCache = [];
 
+// Display mode
+let collDisplayMode = 'grid'; // 'grid' or 'list'
+
+function setCollDisplayMode(mode) {
+    collDisplayMode = mode;
+    document.getElementById('view-grid-btn').className = mode === 'grid'
+        ? 'p-1.5 rounded-md transition-colors text-white bg-gray-600'
+        : 'p-1.5 rounded-md transition-colors text-gray-400';
+    document.getElementById('view-list-btn').className = mode === 'list'
+        ? 'p-1.5 rounded-md transition-colors text-white bg-gray-600'
+        : 'p-1.5 rounded-md transition-colors text-gray-400';
+    loadCollection(1);
+}
+
 const RARITY_COLORS = {
     common: 'text-gray-400',
     uncommon: 'text-blue-300',
@@ -146,25 +160,44 @@ async function loadCollection(page = 1) {
     const q = document.getElementById('collection-search')?.value?.trim() || '';
 
     const container = document.getElementById('collection-grid');
+    const isList = collDisplayMode === 'list';
+
+    // Apply container layout class based on mode
+    container.className = isList
+        ? 'space-y-1'
+        : 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3';
+
     if (page === 1) {
-        container.innerHTML = '<div class="col-span-full flex justify-center py-8"><div class="spinner w-8 h-8"></div></div>';
+        const spinner = isList
+            ? '<div class="flex justify-center py-8"><div class="spinner w-8 h-8"></div></div>'
+            : '<div class="col-span-full flex justify-center py-8"><div class="spinner w-8 h-8"></div></div>';
+        container.innerHTML = spinner;
     }
 
-    const params = new URLSearchParams({ page, limit: 40, q });
+    const limit = isList ? 500 : 40;
+    const params = new URLSearchParams({ page, limit, q });
     if (activeCollectionId) params.set('collection_id', activeCollectionId);
     const res = await API.get(`/api/collection?${params}`);
 
     if (!res) {
-        container.innerHTML = '<p class="col-span-full text-center text-red-400 py-8">Failed to load collection</p>';
+        const errMsg = isList
+            ? '<p class="text-center text-red-400 py-8">Failed to load collection</p>'
+            : '<p class="col-span-full text-center text-red-400 py-8">Failed to load collection</p>';
+        container.innerHTML = errMsg;
         return;
     }
 
-    document.getElementById('collection-count').textContent = `${res.total} cards`;
+    document.getElementById('collection-count').textContent = `${res.total_quantity} cards · ${res.unique_names} unique`;
     renderCollection(res.entries);
     updateCollectionPagination(res);
 }
 
 function renderCollection(entries) {
+    if (collDisplayMode === 'list') {
+        renderCollectionList(entries);
+        return;
+    }
+
     const container = document.getElementById('collection-grid');
 
     if (!entries || entries.length === 0) {
@@ -230,13 +263,67 @@ function renderCollection(entries) {
     }).join('');
 }
 
+function renderCollectionList(entries) {
+    const container = document.getElementById('collection-grid');
+
+    if (!entries || entries.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-12 text-gray-500">
+                <svg class="w-16 h-16 mx-auto mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                </svg>
+                <p class="text-sm">Your collection is empty.</p>
+                <p class="text-xs mt-1">Search for cards on the left to add them.</p>
+            </div>`;
+        return;
+    }
+
+    // Group entries by card name, preserving alphabetical order
+    const groups = new Map();
+    for (const entry of entries) {
+        const name = entry.card.name;
+        if (!groups.has(name)) groups.set(name, []);
+        groups.get(name).push(entry);
+    }
+
+    const sorted = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+
+    container.innerHTML = sorted.map(([name, groupEntries]) => {
+        const totalQty = groupEntries.reduce((sum, e) => sum + e.quantity, 0);
+
+        const chips = groupEntries.map(entry => {
+            const finishLabel = FINISH_LABELS[entry.finish] || entry.finish;
+            const finishColor = FINISH_COLORS[entry.finish] || 'bg-gray-700 text-gray-300';
+            const setLabel = entry.card.set_name
+                ? `${entry.card.set_name} · #${entry.card.collector_number || ''}`
+                : (entry.card.set_code || '');
+            const entryJson = JSON.stringify(entry).replace(/"/g, '&quot;');
+            return `<button onclick="openCollectionCardModal(${entryJson})"
+                class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded ${finishColor} hover:opacity-80 transition-opacity">
+                <span class="font-semibold">×${entry.quantity}</span>
+                <span>${finishLabel}</span>
+                ${setLabel ? `<span class="opacity-60">· ${setLabel}</span>` : ''}
+            </button>`;
+        }).join('');
+
+        return `
+            <div class="flex items-start justify-between px-3 py-2.5 rounded-lg hover:bg-gray-700/50 border border-transparent hover:border-gray-600 transition-colors">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-white">${name}</p>
+                    <div class="flex flex-wrap gap-1 mt-1">${chips}</div>
+                </div>
+                <span class="text-sm font-bold text-gray-300 ml-4 mt-0.5 flex-shrink-0">×${totalQty}</span>
+            </div>`;
+    }).join('');
+}
+
 function updateCollectionPagination(data) {
     const pagination = document.getElementById('collection-pagination');
     const pageInfo = document.getElementById('coll-page-info');
     const prevBtn = document.getElementById('coll-prev');
     const nextBtn = document.getElementById('coll-next');
 
-    if (data.pages <= 1) {
+    if (collDisplayMode === 'list' || data.pages <= 1) {
         pagination.classList.add('hidden');
         return;
     }

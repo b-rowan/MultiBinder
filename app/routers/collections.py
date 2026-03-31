@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, Query, UploadFile, File
 from fastapi.responses import HTMLResponse
-from tortoise.functions import Count
+from tortoise.functions import Count, Sum
 from app.models.card import Card, UserCollection
 from app.models.collection import Collection
 from app.models.user import User
@@ -81,7 +81,7 @@ async def collection_page(request: Request):
 async def list_collections(current_user: User = Depends(get_current_user)):
     collections = await (
         Collection.filter(user=current_user)
-        .annotate(entry_count=Count("entries"), unique_card_count=Count("entries__card_id", distinct=True))
+        .annotate(entry_count=Sum("entries__quantity"), unique_card_count=Count("entries__card__name", distinct=True))
         .order_by("created_at")
     )
     return [
@@ -94,8 +94,8 @@ async def list_collections(current_user: User = Depends(get_current_user)):
             "external_url": c.external_url,
             "last_synced": c.last_synced.isoformat() if c.last_synced else None,
             "created_at": c.created_at.isoformat() if c.created_at else None,
-            "entry_count": c.entry_count,
-            "unique_card_count": c.unique_card_count,
+            "entry_count": c.entry_count or 0,
+            "unique_card_count": c.unique_card_count or 0,
         }
         for c in collections
     ]
@@ -200,7 +200,7 @@ async def sync_collection(
 @router.get("/api/collection", response_model=dict)
 async def get_my_collection(
     page: int = Query(default=1, ge=1),
-    limit: int = Query(default=40, ge=1, le=100),
+    limit: int = Query(default=40, ge=1, le=500),
     q: str = Query(default=""),
     collection_id: int = Query(default=None),
     current_user: User = Depends(get_current_user),
@@ -223,9 +223,21 @@ async def get_my_collection(
     entries = await query.offset(offset).limit(limit).prefetch_related("card")
     result = [_serialize_entry(e, e.card) for e in entries]
 
+    if total > 0:
+        all_entries = await query.values("quantity", "card_id")
+        total_quantity = sum(e["quantity"] for e in all_entries)
+        unique_card_ids = {e["card_id"] for e in all_entries}
+        unique_names_list = await Card.filter(scryfall_id__in=list(unique_card_ids)).values_list("name", flat=True)
+        unique_names = len(set(unique_names_list))
+    else:
+        total_quantity = 0
+        unique_names = 0
+
     return {
         "entries": result,
         "total": total,
+        "total_quantity": total_quantity,
+        "unique_names": unique_names,
         "page": page,
         "limit": limit,
         "pages": pages,

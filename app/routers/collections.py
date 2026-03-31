@@ -9,6 +9,7 @@ from app.schemas.card import (
 )
 from app.services.auth import get_current_user
 from app.services.moxfield import sync_moxfield_collection
+from app.services.manabox import sync_manabox_collection
 from datetime import datetime, timezone
 import math
 import csv
@@ -80,7 +81,7 @@ async def collection_page(request: Request):
 async def list_collections(current_user: User = Depends(get_current_user)):
     collections = await (
         Collection.filter(user=current_user)
-        .annotate(entry_count=Count("entries"))
+        .annotate(entry_count=Count("entries"), unique_card_count=Count("entries__card_id", distinct=True))
         .order_by("created_at")
     )
     return [
@@ -94,6 +95,7 @@ async def list_collections(current_user: User = Depends(get_current_user)):
             "last_synced": c.last_synced.isoformat() if c.last_synced else None,
             "created_at": c.created_at.isoformat() if c.created_at else None,
             "entry_count": c.entry_count,
+            "unique_card_count": c.unique_card_count,
         }
         for c in collections
     ]
@@ -122,6 +124,7 @@ async def create_collection(
         "last_synced": None,
         "created_at": coll.created_at.isoformat() if coll.created_at else None,
         "entry_count": 0,
+            "unique_card_count": 0,
     }
 
 
@@ -171,6 +174,11 @@ async def sync_collection(
     if coll.external_source == "moxfield":
         try:
             result = await sync_moxfield_collection(coll)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Sync failed: {e}")
+    elif coll.external_source == "manabox":
+        try:
+            result = await sync_manabox_collection(coll)
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Sync failed: {e}")
     else:

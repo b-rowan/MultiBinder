@@ -645,8 +645,8 @@ async function loadCollections() {
     const select = document.getElementById('collection-select');
     select.innerHTML = collections.map(c => {
         const label = c.type === 'external'
-            ? `${c.name} (${c.entry_count} cards) [${c.external_source || 'external'}]`
-            : `${c.name} (${c.entry_count} cards)`;
+            ? `${c.name} (${c.entry_count} cards, ${c.unique_card_count} unique) [${c.external_source || 'external'}]`
+            : `${c.name} (${c.entry_count} cards, ${c.unique_card_count} unique)`;
         return `<option value="${c.id}">${label}</option>`;
     }).join('');
 
@@ -758,6 +758,24 @@ function closeNewCollectionModal() {
 function toggleExternalFields() {
     const type = document.querySelector('input[name="new-coll-type"]:checked')?.value;
     document.getElementById('external-fields').classList.toggle('hidden', type !== 'external');
+}
+
+const _SOURCE_HINTS = {
+    moxfield: {
+        placeholder: 'https://www.moxfield.com/binders/...',
+        hint: 'Paste a public Moxfield binder URL.',
+    },
+    manabox: {
+        placeholder: 'https://manabox.app/decks/...',
+        hint: 'Paste a public ManaBox deck URL.',
+    },
+};
+
+function updateUrlPlaceholder() {
+    const source = document.getElementById('new-coll-source').value;
+    const cfg = _SOURCE_HINTS[source] || _SOURCE_HINTS.moxfield;
+    document.getElementById('new-coll-url').placeholder = cfg.placeholder;
+    document.getElementById('new-coll-url-hint').textContent = cfg.hint;
 }
 
 async function submitNewCollection() {

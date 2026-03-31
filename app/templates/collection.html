@@ -174,7 +174,7 @@
                     </div>
                 </div>
 
-                <div id="collection-grid">
+                <div id="collection-grid" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3 overflow-y-auto max-h-[calc(100vh-380px)] pr-1">
                     <div class="col-span-full flex justify-center py-8">
                         <div class="spinner w-8 h-8"></div>
                     </div>
@@ -182,9 +182,9 @@
 
                 <!-- Collection Pagination -->
                 <div id="collection-pagination" class="hidden mt-4 flex items-center justify-between text-sm text-gray-400">
-                    <button id="coll-prev" onclick="loadCollection(currentCollPage - 1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">Prev</button>
+                    <button id="coll-prev" onclick="goToCollPage(currentCollPage - 1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">Prev</button>
                     <span id="coll-page-info">Page 1</span>
-                    <button id="coll-next" onclick="loadCollection(currentCollPage + 1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">Next</button>
+                    <button id="coll-next" onclick="goToCollPage(currentCollPage + 1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">Next</button>
                 </div>
             </div>
         </div>
@@ -308,6 +308,22 @@
                 Import
             </button>
         </div>
+    </div>
+</div>
+
+<!-- Variant Modal -->
+<div id="variant-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    onclick="if(event.target===this) closeVariantModal()">
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm">
+        <div class="flex items-center justify-between p-5 border-b border-gray-700">
+            <h3 class="text-lg font-semibold text-white truncate pr-4" id="variant-modal-title"></h3>
+            <button onclick="closeVariantModal()" class="text-gray-400 hover:text-white flex-shrink-0">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div id="variant-modal-list" class="p-2 space-y-0.5 max-h-96 overflow-y-auto"></div>
     </div>
 </div>
 

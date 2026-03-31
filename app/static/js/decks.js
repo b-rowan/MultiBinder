@@ -121,17 +121,15 @@ function renderCardGrid(containerId, cards) {
         const card = dc.card;
         const avail = getAvailabilityStatus(card.scryfall_id);
         const BORDER_COLORS = {
-            owned:             'border-green-500',
-            mixed_you_enough:  'border-lime-400',
-            collab_owned:      'border-emerald-800',
-
-            in_use:            'border-purple-500',
-            collab_in_use:     'border-pink-400',
-
+            owned:             'border-green-500',   // user alone, free
+            mixed_you_enough:  'border-lime-500',    // user + collab free, enough
+            collab_owned:      'border-emerald-800', // collab alone, free
+            owned_in_use:      'border-purple-500',     // user alone, but in other decks
+            mixed_in_use:      'border-rose-400',    // user + collab total enough, some in other decks
+            collab_in_use:     'border-pink-400',    // collab alone, but in other decks
             partial:           'border-yellow-400',
-            collab_partial:    'border-orange-400',
-            partial_mixed:     'border-amber-400',
-
+            partial_mixed:     'border-amber-500',
+            collab_partial:    'border-orange-600',
             missing:           'border-red-500',
         };
         const borderColor = avail ? (BORDER_COLORS[avail.status] || 'border-gray-600') : 'border-gray-600';

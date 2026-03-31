@@ -444,17 +444,27 @@ async def get_deck_availability(
 
     # All participants (owner + collaborators)
     all_participants = [owner] + list(collaborators)
+    other_participants = [p for p in all_participants if p.id != current_user.id]
 
-    # Precompute other deck IDs for all participants (owned + collaborated, excluding this deck)
-    participant_ids = [p.id for p in all_participants]
-    owned_other_ids = set(
-        await Deck.filter(owner_id__in=participant_ids).exclude(id=deck_id).values_list("id", flat=True)
+    # Precompute current user's other deck IDs (owned or collaborated, excluding this deck)
+    user_other_deck_ids = set(
+        await Deck.filter(owner=current_user).exclude(id=deck_id).values_list("id", flat=True)
     )
-    collab_other_ids = set()
-    for p in all_participants:
-        ids = await Deck.filter(collaborators=p).exclude(id=deck_id).values_list("id", flat=True)
-        collab_other_ids.update(ids)
-    other_deck_ids = list(owned_other_ids | collab_other_ids)
+    user_other_deck_ids.update(
+        await Deck.filter(collaborators=current_user).exclude(id=deck_id).values_list("id", flat=True)
+    )
+    user_other_deck_ids = list(user_other_deck_ids)
+
+    # Precompute other participants' other deck IDs (excluding this deck)
+    collab_other_deck_ids = set()
+    for p in other_participants:
+        collab_other_deck_ids.update(
+            await Deck.filter(owner=p).exclude(id=deck_id).values_list("id", flat=True)
+        )
+        collab_other_deck_ids.update(
+            await Deck.filter(collaborators=p).exclude(id=deck_id).values_list("id", flat=True)
+        )
+    collab_other_deck_ids = list(collab_other_deck_ids)
 
     # Get all deck cards
     deck_cards = await DeckCard.filter(deck=deck).prefetch_related("card")
@@ -466,11 +476,12 @@ async def get_deck_availability(
 
         # Match any printing of the same card name
         same_name_ids = await Card.filter(name=card.name).values_list("scryfall_id", flat=True)
+        same_name_ids = list(same_name_ids)
 
         owners_data = []
         for participant in all_participants:
             entries = await UserCollection.filter(
-                user=participant, card_id__in=list(same_name_ids)
+                user=participant, card_id__in=same_name_ids
             ).all()
             total_qty = sum(e.quantity for e in entries)
             if total_qty > 0:
@@ -481,42 +492,49 @@ async def get_deck_availability(
                     "foil": any(e.finish != "nonfoil" for e in entries),
                 })
 
-        total_available = sum(o["quantity"] for o in owners_data)
+        user_qty = sum(o["quantity"] for o in owners_data if o["user_id"] == current_user.id)
+        collab_qty = sum(o["quantity"] for o in owners_data if o["user_id"] != current_user.id)
 
-        # Count copies of this card committed to other decks
-        if other_deck_ids:
-            other_dcs = await DeckCard.filter(
-                deck_id__in=other_deck_ids, card_id__in=list(same_name_ids)
+        # User's copies committed to their other decks
+        if user_other_deck_ids:
+            user_other_dcs = await DeckCard.filter(
+                deck_id__in=user_other_deck_ids, card_id__in=same_name_ids
             ).all()
-            in_other_decks = sum(odc.quantity for odc in other_dcs)
+            user_in_use = sum(d.quantity for d in user_other_dcs)
         else:
-            in_other_decks = 0
+            user_in_use = 0
 
-        free = max(0, total_available - in_other_decks)
+        # Collaborators' copies committed to their other decks
+        if collab_other_deck_ids:
+            collab_other_dcs = await DeckCard.filter(
+                deck_id__in=collab_other_deck_ids, card_id__in=same_name_ids
+            ).all()
+            collab_in_use = sum(d.quantity for d in collab_other_dcs)
+        else:
+            collab_in_use = 0
 
-        current_user_qty = sum(
-            o["quantity"] for o in owners_data if o["user_id"] == current_user.id
-        )
-        collab_qty = total_available - current_user_qty
+        user_free = max(0, user_qty - user_in_use)
+        collab_free = max(0, collab_qty - collab_in_use)
 
-        if free >= needed:
-            if current_user_qty > 0 and collab_qty > 0:
-                status = "mixed_you_enough"   # both own some, combined free is enough
-            elif current_user_qty >= needed:
-                status = "owned"              # you alone cover it
-            else:
-                status = "collab_owned"       # collab alone covers it
-        elif total_available >= needed:
-            if current_user_qty > 0:
-                status = "in_use"             # you have copies but they're in other decks
-            else:
-                status = "collab_in_use"      # collab has copies but they're in other decks
-        elif current_user_qty > 0 and collab_qty > 0:
-            status = "partial_mixed"          # both own some but combined still not enough
-        elif current_user_qty > 0:
-            status = "partial"                # only you own some, not enough
+        # Evaluate in priority order: user-first, then combined, then collab, then partial
+        if user_free >= needed:
+            status = "owned"              # user alone has enough free copies
+        elif user_qty >= needed:
+            status = "owned_in_use"       # user alone has enough but they're in other decks
+        elif user_qty > 0 and user_free + collab_free >= needed:
+            status = "mixed_you_enough"   # user + collab free copies cover it together
+        elif user_qty > 0 and user_qty + collab_qty >= needed:
+            status = "mixed_in_use"       # combined total covers it but some are in other decks
+        elif collab_free >= needed:
+            status = "collab_owned"       # collab alone has enough free copies
+        elif collab_qty >= needed:
+            status = "collab_in_use"      # collab alone has enough but they're in other decks
+        elif user_qty > 0 and collab_qty > 0:
+            status = "partial_mixed"      # both have some but combined not enough
+        elif user_qty > 0:
+            status = "partial"            # only user has some, not enough
         elif collab_qty > 0:
-            status = "collab_partial"         # only collab owns some, not enough
+            status = "collab_partial"     # only collab has some, not enough
         else:
             status = "missing"
 

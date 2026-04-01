@@ -394,6 +394,17 @@ async def import_deck_list(
     }
 
 
+@router.get("/api/users/search", response_model=list)
+async def search_users(
+    q: str = Query("", min_length=0),
+    current_user: User = Depends(get_current_user),
+):
+    if not q or len(q) < 1:
+        return []
+    users = await User.filter(username__icontains=q).exclude(id=current_user.id).limit(8).values("id", "username")
+    return users
+
+
 @router.post("/api/decks/{deck_id}/collaborators", response_model=dict)
 async def add_collaborator(
     deck_id: int,

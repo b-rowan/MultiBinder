@@ -405,14 +405,14 @@ function renderCollaborators(collaborators, owner) {
     container.innerHTML = ownerHtml + collabsHtml;
 }
 
-async function addCollaborator() {
-    const username = document.getElementById('collab-username').value.trim();
+async function addCollaborator(username) {
     if (!username) return;
 
     const res = await API.post(`/api/decks/${deckId}/collaborators`, { username });
     if (res && res.message) {
         showFlash(res.message, 'success');
         document.getElementById('collab-username').value = '';
+        hideSuggestions();
         loadDeck();
     } else {
         showFlash(res?.detail || 'Failed to add collaborator', 'error');
@@ -427,9 +427,47 @@ async function removeCollaborator(userId) {
     }
 }
 
-// Enter key for collaborator input
+// ─── Collaborator live search ─────────────────────────────────────────────────
+
+let collabSearchTimer = null;
+
+function hideSuggestions() {
+    const ul = document.getElementById('collab-suggestions');
+    if (ul) { ul.innerHTML = ''; ul.classList.add('hidden'); }
+}
+
+function showSuggestions(users) {
+    const ul = document.getElementById('collab-suggestions');
+    if (!ul) return;
+    if (!users.length) { hideSuggestions(); return; }
+
+    ul.innerHTML = users.map(u => `
+        <li class="px-3 py-2 text-sm text-white hover:bg-purple-700 cursor-pointer flex items-center gap-2"
+            data-username="${u.username}"
+            onmousedown="addCollaborator('${u.username}')">
+            <div class="w-5 h-5 rounded-full bg-blue-800 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">${u.username[0].toUpperCase()}</div>
+            ${u.username}
+        </li>`).join('');
+    ul.classList.remove('hidden');
+}
+
+document.getElementById('collab-username')?.addEventListener('input', (e) => {
+    clearTimeout(collabSearchTimer);
+    const q = e.target.value.trim();
+    if (!q) { hideSuggestions(); return; }
+    collabSearchTimer = setTimeout(async () => {
+        const users = await API.get(`/api/users/search?q=${encodeURIComponent(q)}`);
+        if (Array.isArray(users)) showSuggestions(users);
+    }, 200);
+});
+
+document.getElementById('collab-username')?.addEventListener('blur', () => {
+    // Small delay so onmousedown on suggestions fires first
+    setTimeout(hideSuggestions, 150);
+});
+
 document.getElementById('collab-username')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') addCollaborator();
+    if (e.key === 'Escape') { hideSuggestions(); e.target.blur(); }
 });
 
 // ─── Availability ─────────────────────────────────────────────────────────────

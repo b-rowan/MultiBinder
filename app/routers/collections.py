@@ -151,11 +151,6 @@ async def delete_collection(
     current_user: User = Depends(get_current_user),
 ):
     coll = await _require_collection(collection_id, current_user)
-    # Prevent deleting the last personal collection
-    if coll.type == "personal":
-        remaining = await Collection.filter(user=current_user, type="personal").count()
-        if remaining <= 1:
-            raise HTTPException(status_code=400, detail="Cannot delete your only personal collection")
     await coll.delete()
     return {"message": "Collection deleted"}
 
@@ -205,6 +200,45 @@ async def get_my_collection(
     collection_id: int = Query(default=None),
     current_user: User = Depends(get_current_user),
 ):
+    # collection_id=0 means "All Collections" aggregate view
+    if collection_id == 0:
+        user_collection_ids = await Collection.filter(user=current_user).values_list("id", flat=True)
+        if q:
+            matching_cards = await Card.filter(name__icontains=q).values_list("scryfall_id", flat=True)
+            query = UserCollection.filter(collection_id__in=list(user_collection_ids), card_id__in=list(matching_cards))
+        else:
+            query = UserCollection.filter(collection_id__in=list(user_collection_ids))
+
+        total = await query.count()
+        pages = math.ceil(total / limit) if total > 0 else 1
+        offset = (page - 1) * limit
+
+        entries = await query.offset(offset).limit(limit).prefetch_related("card")
+        result = [_serialize_entry(e, e.card) for e in entries]
+
+        if total > 0:
+            all_entries = await query.values("quantity", "card_id")
+            total_quantity = sum(e["quantity"] for e in all_entries)
+            unique_card_ids = {e["card_id"] for e in all_entries}
+            unique_names_list = await Card.filter(scryfall_id__in=list(unique_card_ids)).values_list("name", flat=True)
+            unique_names = len(set(unique_names_list))
+        else:
+            total_quantity = 0
+            unique_names = 0
+
+        return {
+            "entries": result,
+            "total": total,
+            "total_quantity": total_quantity,
+            "unique_names": unique_names,
+            "page": page,
+            "limit": limit,
+            "pages": pages,
+            "collection_id": 0,
+            "collection_name": "All Collections",
+            "collection_type": "aggregate",
+        }
+
     if collection_id is not None:
         coll = await _require_collection(collection_id, current_user)
     else:

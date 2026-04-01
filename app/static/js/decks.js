@@ -103,69 +103,120 @@ function renderDeckCards(cards) {
     renderCardGrid('side-cards', sideCards);
 }
 
+const TYPE_ORDER = ['Creature', 'Planeswalker', 'Battle', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land', 'Other'];
+
+function getCardType(typeLine) {
+    if (!typeLine) return 'Other';
+    for (const t of TYPE_ORDER) {
+        if (typeLine.includes(t)) return t;
+    }
+    return 'Other';
+}
+
+const DOT_COLORS = {
+    owned:            'bg-green-500',
+    mixed_you_enough: 'bg-lime-500',
+    collab_owned:     'bg-emerald-700',
+    owned_in_use:     'bg-purple-500',
+    mixed_in_use:     'bg-rose-400',
+    collab_in_use:    'bg-pink-400',
+    partial:          'bg-yellow-400',
+    partial_mixed:    'bg-amber-500',
+    collab_partial:   'bg-orange-600',
+    missing:          'bg-red-500',
+};
+
+const PARTIAL_STATUSES = new Set(['partial', 'partial_mixed', 'collab_partial', 'missing']);
+
+function renderManaCost(manaCost) {
+    if (!manaCost) return '';
+    return manaCost.replace(/\{([^}]+)\}/g, (_, sym) => {
+        const code = sym.replace(/\//g, '');
+        return `<img src="https://svgs.scryfall.io/card-symbols/${code}.svg" class="inline w-3.5 h-3.5 align-middle" alt="${sym}" onerror="this.replaceWith(document.createTextNode('{${sym}}'))">`;
+    });
+}
+
+function getEffectiveManaCost(card) {
+    if (card.mana_cost) return card.mana_cost;
+    // Double-faced cards: use front face mana cost
+    if (card.card_faces && card.card_faces.length > 0) {
+        return card.card_faces[0].mana_cost || '';
+    }
+    return '';
+}
+
+function renderCardRow(dc) {
+    const card = dc.card;
+    const avail = getAvailabilityStatus(card.scryfall_id);
+    const dotColor = avail ? (DOT_COLORS[avail.status] || 'bg-gray-600') : 'bg-gray-600';
+
+    const totalOwned = avail ? avail.owners.reduce((sum, o) => sum + o.quantity, 0) : 0;
+    const shortfall = avail && PARTIAL_STATUSES.has(avail.status) ? avail.needed - totalOwned : 0;
+    const neededBadge = shortfall > 0
+        ? `<span class="text-xs text-red-400 flex-shrink-0">(need ${shortfall})</span>`
+        : '';
+
+    const manaCostHtml = renderManaCost(getEffectiveManaCost(card));
+
+    return `
+        <div class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-700 group transition-colors">
+            <span class="w-2 h-2 rounded-full flex-shrink-0 ${dotColor}"></span>
+            <span class="text-sm font-medium text-white w-5 text-right flex-shrink-0">${dc.quantity}</span>
+            <span class="text-sm text-gray-200 truncate">${card.name}</span>
+            ${neededBadge}
+            <span class="flex-1"></span>
+            <span class="flex items-center gap-0.5 flex-shrink-0 hidden sm:flex">${manaCostHtml}</span>
+            <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                <button onclick="adjustDeckCardQty(${dc.id}, ${dc.quantity}, -1)"
+                    class="w-6 h-6 bg-gray-600 hover:bg-red-700 text-white rounded text-xs font-bold transition-colors">−</button>
+                <button onclick="adjustDeckCardQty(${dc.id}, ${dc.quantity}, 1)"
+                    class="w-6 h-6 bg-gray-600 hover:bg-green-700 text-white rounded text-xs font-bold transition-colors">+</button>
+                <button onclick="removeDeckCard(${dc.id})"
+                    class="w-6 h-6 bg-gray-600 hover:bg-red-900 text-red-400 rounded flex items-center justify-center transition-colors">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
 function renderCardGrid(containerId, cards) {
     const container = document.getElementById(containerId);
 
     if (!cards || cards.length === 0) {
         if (containerId === 'side-cards') {
-            container.innerHTML = '<p class="col-span-full text-sm text-gray-500 py-4 text-center">No sideboard cards</p>';
+            container.innerHTML = '<p class="text-sm text-gray-500 py-4 text-center">No sideboard cards</p>';
         } else if (containerId === 'commander-cards') {
             container.innerHTML = '';
         } else {
-            container.innerHTML = '<p class="col-span-full text-sm text-gray-500 py-4 text-center">No cards yet. Search and add cards on the left.</p>';
+            container.innerHTML = '<p class="text-sm text-gray-500 py-4 text-center">No cards yet. Search and add cards on the left.</p>';
         }
         return;
     }
 
-    container.innerHTML = cards.map(dc => {
-        const card = dc.card;
-        const avail = getAvailabilityStatus(card.scryfall_id);
-        const BORDER_COLORS = {
-            owned:             'border-green-500',   // user alone, free
-            mixed_you_enough:  'border-lime-500',    // user + collab free, enough
-            collab_owned:      'border-emerald-800', // collab alone, free
-            owned_in_use:      'border-purple-500',     // user alone, but in other decks
-            mixed_in_use:      'border-rose-400',    // user + collab total enough, some in other decks
-            collab_in_use:     'border-pink-400',    // collab alone, but in other decks
-            partial:           'border-yellow-400',
-            partial_mixed:     'border-amber-500',
-            collab_partial:    'border-orange-600',
-            missing:           'border-red-500',
-        };
-        const borderColor = avail ? (BORDER_COLORS[avail.status] || 'border-gray-600') : 'border-gray-600';
+    // Group by type only for mainboard
+    if (containerId !== 'main-cards') {
+        container.innerHTML = cards.map(renderCardRow).join('');
+        return;
+    }
 
-        return `
-            <div class="relative group card-hover">
-                <div class="relative rounded-xl overflow-hidden border-2 ${borderColor} shadow-lg">
-                    <img src="${card.image_uri_small || ''}"
-                        alt="${card.name}"
-                        class="w-full aspect-[63/88] object-cover"
-                        loading="lazy"
-                        onerror="this.src=''">
+    const groups = {};
+    for (const dc of cards) {
+        const type = getCardType(dc.card.type_line);
+        if (!groups[type]) groups[type] = [];
+        groups[type].push(dc);
+    }
 
-                    <div class="absolute top-1.5 right-1.5 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded-md">
-                        ×${dc.quantity}
-                    </div>
-                    <!-- Hover controls -->
-                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-end justify-center opacity-0 group-hover:opacity-100 pb-2">
-                        <div class="flex gap-1">
-                            <button onclick="adjustDeckCardQty(${dc.id}, ${dc.quantity}, -1)"
-                                class="w-7 h-7 bg-gray-800/90 hover:bg-red-800 text-white rounded-lg text-sm font-bold transition-colors">−</button>
-                            <button onclick="adjustDeckCardQty(${dc.id}, ${dc.quantity}, 1)"
-                                class="w-7 h-7 bg-gray-800/90 hover:bg-green-800 text-white rounded-lg text-sm font-bold transition-colors">+</button>
-                            <button onclick="removeDeckCard(${dc.id})"
-                                class="w-7 h-7 bg-gray-800/90 hover:bg-red-900 text-red-400 rounded-lg flex items-center justify-center transition-colors">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <p class="text-xs text-gray-400 truncate mt-1 px-0.5">${card.name}</p>
-            </div>
-        `;
-    }).join('');
+    let html = '';
+    for (const type of TYPE_ORDER) {
+        if (!groups[type]) continue;
+        const count = groups[type].reduce((sum, dc) => sum + dc.quantity, 0);
+        html += `<p class="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 pt-3 pb-1">${type} <span class="text-gray-600 font-normal">(${count})</span></p>`;
+        html += groups[type].map(renderCardRow).join('');
+    }
+    container.innerHTML = html;
 }
 
 // ─── Board Selector ───────────────────────────────────────────────────────────

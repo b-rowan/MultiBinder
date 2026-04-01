@@ -121,6 +121,7 @@ async def get_deck(
                 "loyalty": card.loyalty,
                 "layout": card.layout,
                 "legalities": card.legalities,
+                "card_faces": card.card_faces,
             },
         })
 
@@ -281,15 +282,19 @@ async def remove_card_from_deck(
     return {"message": "Card removed from deck"}
 
 
-_LINE_RE = re.compile(r'^(\d+)\s+(.+?)\s+\(([A-Z0-9]+)\)\s+(\S+)\s*$')
+_LINE_RE = re.compile(r'^(\d+)\s+(.+)$')
 
 
 def _parse_deck_list(text: str) -> list[dict]:
     entries = []
     current_board = "main"
+    seen_main_card = False
     for line in text.splitlines():
         line = line.strip()
         if not line:
+            # A blank line after at least one mainboard card → sideboard
+            if current_board == "main" and seen_main_card:
+                current_board = "side"
             continue
         if line.startswith("//"):
             section = line.lstrip("/").strip().lower()
@@ -302,13 +307,16 @@ def _parse_deck_list(text: str) -> list[dict]:
             continue
         m = _LINE_RE.match(line)
         if m:
+            name = m.group(2).strip()
+            # Normalise split-card names: "Wear/Tear" → "Wear // Tear"
+            name = re.sub(r'\s*/\s*', ' // ', name)
             entries.append({
                 "quantity": int(m.group(1)),
-                "name": m.group(2).strip(),
-                "set_code": m.group(3).upper(),
-                "collector_number": m.group(4).strip(),
+                "name": name,
                 "board": current_board,
             })
+            if current_board == "main":
+                seen_main_card = True
     return entries
 
 
@@ -336,23 +344,14 @@ async def import_deck_list(
     not_found = []
 
     for entry in entries:
-        # Most specific: set + collector number
-        card = await Card.filter(
-            set_code__iexact=entry["set_code"],
-            collector_number=entry["collector_number"],
-        ).first()
-        # Fallback: set + name
+        card = await Card.filter(name=entry["name"]).first()
+
+        # Fallback: front face of a double-faced card ("Ral, Monsoon Mage" → "Ral, Monsoon Mage // ...")
         if not card:
-            card = await Card.filter(
-                set_code__iexact=entry["set_code"],
-                name=entry["name"],
-            ).first()
-        # Fallback: name only (first printing)
-        if not card:
-            card = await Card.filter(name=entry["name"]).first()
+            card = await Card.filter(name__startswith=entry["name"] + " // ").first()
 
         if not card:
-            not_found.append(f"{entry['quantity']} {entry['name']} ({entry['set_code']}) {entry['collector_number']}")
+            not_found.append(f"{entry['quantity']} {entry['name']}")
             continue
 
         existing = await DeckCard.filter(deck=deck, card=card, board=entry["board"]).first()

@@ -184,7 +184,7 @@ async function loadCollection(page = 1) {
     if (isList) {
         // Fetch all entries at once so we can group and paginate by unique name client-side
         const params = new URLSearchParams({ page: 1, limit: 500, q });
-        if (activeCollectionId) params.set('collection_id', activeCollectionId);
+        if (activeCollectionId !== null) params.set('collection_id', activeCollectionId);
         const res = await API.get(`/api/collection?${params}`);
         if (!res) {
             container.innerHTML = '<p class="text-center text-red-400 py-8">Failed to load collection</p>';
@@ -202,7 +202,7 @@ async function loadCollection(page = 1) {
         renderCollectionListPage(1);
     } else {
         const params = new URLSearchParams({ page, limit: 24, q });
-        if (activeCollectionId) params.set('collection_id', activeCollectionId);
+        if (activeCollectionId !== null) params.set('collection_id', activeCollectionId);
         const res = await API.get(`/api/collection?${params}`);
         if (!res) {
             container.innerHTML = '<p class="col-span-full text-center text-red-400 py-8">Failed to load collection</p>';
@@ -781,34 +781,37 @@ async function loadCollections() {
 
     collectionsCache = collections;
     const select = document.getElementById('collection-select');
-    select.innerHTML = collections.map(c => {
+    const totalCards = collections.reduce((sum, c) => sum + (c.entry_count || 0), 0);
+    const totalUnique = collections.reduce((sum, c) => sum + (c.unique_card_count || 0), 0);
+    const allOption = `<option value="0">All Collections (${totalCards} cards, ${totalUnique} unique)</option>`;
+    select.innerHTML = allOption + collections.map(c => {
         const label = c.type === 'external'
             ? `${c.name} (${c.entry_count} cards, ${c.unique_card_count} unique) [${c.external_source || 'external'}]`
             : `${c.name} (${c.entry_count} cards, ${c.unique_card_count} unique)`;
         return `<option value="${c.id}">${label}</option>`;
     }).join('');
 
-    // Default to first collection
-    if (collections.length > 0 && !activeCollectionId) {
-        activeCollectionId = collections[0].id;
-        activeCollectionType = collections[0].type;
+    // Default to All Collections view
+    if (!activeCollectionId) {
+        activeCollectionId = 0;
+        activeCollectionType = 'aggregate';
     }
 
-    if (activeCollectionId) {
-        select.value = activeCollectionId;
-    }
+    select.value = activeCollectionId ?? 0;
 
     updateCollectionUI();
     loadCollection(1);
 }
 
 function updateCollectionUI() {
-    const coll = collectionsCache.find(c => c.id === activeCollectionId);
-    if (!coll) return;
+    const isAggregate = activeCollectionId === 0;
+    const coll = isAggregate ? null : collectionsCache.find(c => c.id === activeCollectionId);
 
-    activeCollectionType = coll.type;
+    if (!isAggregate && !coll) return;
 
-    const isExternal = coll.type === 'external';
+    activeCollectionType = isAggregate ? 'aggregate' : coll.type;
+
+    const isExternal = !isAggregate && coll.type === 'external';
     const syncBtn = document.getElementById('sync-btn');
     const lastSyncedLabel = document.getElementById('last-synced-label');
     const externalBadge = document.getElementById('external-badge');
@@ -818,9 +821,10 @@ function updateCollectionUI() {
 
     syncBtn?.classList.toggle('hidden', !isExternal);
     externalBadge?.classList.toggle('hidden', !isExternal);
-    importBtn?.classList.toggle('hidden', isExternal);
+    importBtn?.classList.toggle('hidden', isExternal || isAggregate);
+    deleteBtn?.classList.toggle('hidden', isAggregate);
 
-    if (myCardsTitle) myCardsTitle.textContent = coll.name;
+    if (myCardsTitle) myCardsTitle.textContent = isAggregate ? 'All Collections' : coll.name;
 
     if (isExternal && coll.last_synced) {
         const d = new Date(coll.last_synced);
@@ -829,15 +833,11 @@ function updateCollectionUI() {
     } else {
         lastSyncedLabel?.classList.add('hidden');
     }
-
-    // Show delete button only for non-default collections
-    const isDefault = collectionsCache.filter(c => c.type === 'personal').length <= 1 && coll.type === 'personal';
-    deleteBtn?.classList.toggle('hidden', isDefault);
 }
 
 function onCollectionChange() {
     const select = document.getElementById('collection-select');
-    activeCollectionId = parseInt(select.value);
+    activeCollectionId = parseInt(select.value, 10);
     updateCollectionUI();
     loadCollection(1);
 }

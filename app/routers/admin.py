@@ -18,12 +18,12 @@ async def admin_page(request: Request):
 
 
 @router.post("/api/admin/sync-cards", response_model=dict)
-async def trigger_sync(current_user: User = Depends(get_current_admin_user)):
+async def trigger_sync(force: bool = False, current_user: User = Depends(get_current_admin_user)):
     if sync_status["running"]:
         return {"message": "Sync already in progress", "status": sync_status}
 
     # Run sync in background
-    asyncio.create_task(sync_cards())
+    asyncio.create_task(sync_cards(force=force))
 
     return {"message": "Card sync started", "status": sync_status}
 

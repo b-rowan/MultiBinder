@@ -63,12 +63,17 @@
             </div>
 
             <div class="flex gap-3">
-                <button id="sync-btn" onclick="triggerSync()"
+                <button id="sync-btn" onclick="triggerSync(false)"
                     class="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
                     <span id="sync-btn-text">Sync Cards from Scryfall</span>
+                </button>
+                <button onclick="triggerSync(true)"
+                    title="Force full re-sync even if bulk data is unchanged"
+                    class="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors text-xs font-medium">
+                    Force
                 </button>
                 <button onclick="loadStats()"
                     class="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors">
@@ -232,11 +237,26 @@
         }
     }
 
-    async function triggerSync() {
-        const res = await API.post('/api/admin/sync-cards', {});
+    async function triggerSync(force = false) {
+        const url = force ? '/api/admin/sync-cards?force=true' : '/api/admin/sync-cards';
+        const res = await API.post(url, {});
         if (res) {
-            showFlash('Card sync started! This may take several minutes.', 'info');
+            showFlash(force ? 'Force sync started!' : 'Card sync started! Checking for updates...', 'info');
             updateSyncUI(res.status);
+            // Start polling regardless — even an up-to-date check completes quickly
+            if (!syncPolling) {
+                syncPolling = setInterval(async () => {
+                    const syncRes = await API.get('/api/admin/sync-status');
+                    if (syncRes) {
+                        updateSyncUI(syncRes);
+                        if (!syncRes.running) {
+                            clearInterval(syncPolling);
+                            syncPolling = null;
+                            loadStats();
+                        }
+                    }
+                }, 2000);
+            }
         }
     }
 

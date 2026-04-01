@@ -1,34 +1,56 @@
 import httpx
 import ijson
 import asyncio
+import json
+import os
 from typing import Callable, Optional
 from app.models.card import Card
 
 SCRYFALL_API = "https://api.scryfall.com"
 USER_AGENT = "MultiBinder/1.0 (MTG Collection Tracker)"
+_SYNC_STATE_FILE = "scryfall_sync_state.json"
+
+
+def _load_persisted_sync_state() -> dict:
+    try:
+        with open(_SYNC_STATE_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_persisted_sync_state(state: dict):
+    try:
+        with open(_SYNC_STATE_FILE, "w") as f:
+            json.dump(state, f)
+    except Exception:
+        pass
+
+
+_persisted = _load_persisted_sync_state()
 
 # Global sync status
 sync_status = {
     "running": False,
     "progress": 0,
     "total": 0,
-    "processed": 0,
-    "skipped": 0,
+    "processed": _persisted.get("processed", 0),
+    "skipped": _persisted.get("skipped", 0),
     "errors": 0,
-    "last_sync": None,
-    "message": "Never synced",
+    "last_sync": _persisted.get("last_sync", None),
+    "message": f"Last sync: {_persisted['last_sync']}" if _persisted.get("last_sync") else "Never synced",
 }
 
 
-async def get_bulk_data_url() -> str:
-    """Fetch the Scryfall bulk data endpoint and return the default_cards download URL."""
+async def get_bulk_data_info() -> dict:
+    """Fetch the Scryfall bulk data metadata and return the default_cards entry."""
     async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}, timeout=httpx.Timeout(30.0)) as client:
         response = await client.get(f"{SCRYFALL_API}/bulk-data")
         response.raise_for_status()
         data = response.json()
         for item in data.get("data", []):
             if item.get("type") == "default_cards":
-                return item["download_uri"]
+                return item
         raise ValueError("Could not find default_cards bulk data URL")
 
 
@@ -141,8 +163,9 @@ class _AsyncBytesReader:
         return data
 
 
-async def sync_cards(progress_callback: Optional[Callable] = None):
+async def sync_cards(progress_callback: Optional[Callable] = None, force: bool = False):
     """Download and sync all cards from Scryfall bulk data."""
+    from datetime import datetime, timezone
     global sync_status
 
     sync_status["running"] = True
@@ -151,10 +174,20 @@ async def sync_cards(progress_callback: Optional[Callable] = None):
     sync_status["processed"] = 0
     sync_status["skipped"] = 0
     sync_status["errors"] = 0
-    sync_status["message"] = "Fetching bulk data URL..."
+    sync_status["message"] = "Checking for updates..."
 
     try:
-        download_url = await get_bulk_data_url()
+        bulk_info = await get_bulk_data_info()
+        download_url = bulk_info["download_uri"]
+        bulk_updated_at = bulk_info.get("updated_at", "")
+
+        # Skip if bulk file hasn't changed since last sync
+        last_bulk_updated = _persisted.get("bulk_updated_at")
+        if not force and last_bulk_updated and bulk_updated_at and last_bulk_updated >= bulk_updated_at:
+            sync_status["running"] = False
+            sync_status["progress"] = 100
+            sync_status["message"] = f"Already up to date (bulk data unchanged since {bulk_updated_at[:10]})."
+            return
         sync_status["message"] = "Downloading card data..."
 
         batch_size = 500
@@ -208,8 +241,6 @@ async def sync_cards(progress_callback: Optional[Callable] = None):
                     total_skipped += skipped
                     total_errors += errors
 
-        from datetime import datetime
-
         sync_status["running"] = False
         sync_status["progress"] = 100
         sync_status["processed"] = total_processed
@@ -220,6 +251,11 @@ async def sync_cards(progress_callback: Optional[Callable] = None):
             f"Sync complete! {total_processed} cards synced, "
             f"{total_skipped} skipped, {total_errors} errors."
         )
+        _persisted["last_sync"] = sync_status["last_sync"]
+        _persisted["processed"] = total_processed
+        _persisted["skipped"] = total_skipped
+        _persisted["bulk_updated_at"] = bulk_updated_at
+        _save_persisted_sync_state(_persisted)
 
     except Exception as e:
         sync_status["running"] = False

@@ -854,8 +854,10 @@ async function syncActiveCollection() {
 
     if (res && res.message) {
         const skipped = res.not_found?.length || 0;
-        showFlash(`Synced "${res.source_name}": ${res.added} cards added${skipped ? `, ${skipped} not found` : ''}`, 'success');
         await loadCollections();
+        const updatedColl = collectionsCache.find(c => c.id === activeCollectionId);
+        const totalCards = updatedColl ? updatedColl.entry_count : res.added;
+        showFlash(`Synced "${res.source_name}": ${totalCards} cards${skipped ? `, ${skipped} not found` : ''}`, 'success');
     } else {
         showFlash(res?.detail || 'Sync failed', 'error');
     }

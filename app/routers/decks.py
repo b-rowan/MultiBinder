@@ -474,6 +474,19 @@ async def get_deck_availability(
         card = dc.card
         needed = dc.quantity
 
+        # Basic lands are always considered available
+        if card.type_line and "Basic Land" in card.type_line:
+            availability.append({
+                "card_id": card.scryfall_id,
+                "card_name": card.name,
+                "deck_card_id": dc.id,
+                "board": dc.board,
+                "needed": needed,
+                "owners": [],
+                "status": "owned",
+            })
+            continue
+
         # Match any printing of the same card name
         same_name_ids = await Card.filter(name=card.name).values_list("scryfall_id", flat=True)
         same_name_ids = list(same_name_ids)

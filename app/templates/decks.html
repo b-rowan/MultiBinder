@@ -162,7 +162,9 @@
                 </div>
                 <div class="flex items-center gap-2 flex-wrap mt-auto">
                     <span class="text-xs px-2 py-0.5 rounded-full border ${formatClass}">${deck.format.charAt(0).toUpperCase() + deck.format.slice(1)}</span>
-                    <span class="text-xs text-gray-400">${deck.card_count} cards</span>
+                    <span class="text-xs text-gray-400">${deck.main_count} main</span>
+                    ${deck.side_count > 0 ? `<span class="text-xs text-gray-500">· ${deck.side_count} side</span>` : ''}
+                    <span class="text-xs text-gray-500">· ${deck.unique_count} unique</span>
                     ${!isOwner ? `<span class="text-xs text-gray-400 ml-auto">by ${deck.owner_username}</span>` : ''}
                 </div>
             </a>

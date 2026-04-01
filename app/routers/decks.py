@@ -16,7 +16,8 @@ router = APIRouter()
 from app.templates import templates
 
 
-def _serialize_deck(deck: Deck, card_count: int = 0, owner_username: str = None) -> dict:
+def _serialize_deck(deck: Deck, stats: dict = None, owner_username: str = None) -> dict:
+    stats = stats or {}
     return {
         "id": deck.id,
         "name": deck.name,
@@ -27,8 +28,27 @@ def _serialize_deck(deck: Deck, card_count: int = 0, owner_username: str = None)
         "updated_at": deck.updated_at.isoformat() if deck.updated_at else None,
         "owner_id": deck.owner_id,
         "owner_username": owner_username,
-        "card_count": card_count,
+        "card_count": stats.get("main", 0),
+        "main_count": stats.get("main", 0),
+        "side_count": stats.get("side", 0),
+        "unique_count": stats.get("unique", 0),
     }
+
+
+async def _deck_stats(deck_ids: list[int]) -> dict[int, dict]:
+    """Return {deck_id: {main, side, unique}} for a list of deck IDs."""
+    if not deck_ids:
+        return {}
+    rows = await DeckCard.filter(deck_id__in=deck_ids).values("deck_id", "board", "quantity", "card_id")
+    stats: dict[int, dict] = {did: {"main": 0, "side": 0, "cards": set()} for did in deck_ids}
+    for row in rows:
+        did = row["deck_id"]
+        if row["board"] in ("main", "commander"):
+            stats[did]["main"] += row["quantity"]
+        elif row["board"] == "side":
+            stats[did]["side"] += row["quantity"]
+        stats[did]["cards"].add(row["card_id"])
+    return {did: {"main": v["main"], "side": v["side"], "unique": len(v["cards"])} for did, v in stats.items()}
 
 
 @router.get("/decks", response_class=HTMLResponse)
@@ -43,20 +63,18 @@ async def deck_detail_page(request: Request, deck_id: int):
 
 @router.get("/api/decks", response_model=dict)
 async def list_decks(current_user: User = Depends(get_current_user)):
-    # Owned decks
     owned = await Deck.filter(owner=current_user).prefetch_related("owner")
-    owned_list = []
-    for deck in owned:
-        count = await DeckCard.filter(deck=deck, board__in=["main", "commander"]).count()
-        owned_list.append(_serialize_deck(deck, count, current_user.username))
-
-    # Shared decks (collaborator)
     shared_decks = await Deck.filter(collaborators=current_user).prefetch_related("owner")
+
+    all_ids = [d.id for d in owned] + [d.id for d in shared_decks]
+    stats = await _deck_stats(all_ids)
+
+    owned_list = [_serialize_deck(d, stats.get(d.id), current_user.username) for d in owned]
+
     shared_list = []
     for deck in shared_decks:
-        count = await DeckCard.filter(deck=deck, board__in=["main", "commander"]).count()
         owner = await deck.owner
-        shared_list.append(_serialize_deck(deck, count, owner.username))
+        shared_list.append(_serialize_deck(deck, stats.get(deck.id), owner.username))
 
     return {"owned": owned_list, "shared": shared_list}
 
